@@ -1,4 +1,5 @@
-import { Outlet, NavLink } from "react-router-dom";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const linkStyle = ({ isActive }) => ({
   padding: "10px 12px",
@@ -10,6 +11,14 @@ const linkStyle = ({ isActive }) => ({
 });
 
 export default function AppLayout() {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  async function onLogout() {
+    await logout();
+    navigate("/login", { replace: true });
+  }
+
   return (
     <div
       style={{
@@ -23,10 +32,16 @@ export default function AppLayout() {
           padding: 18,
           borderRight: "1px solid var(--border)",
           background: "var(--surface)",
+          display: "grid",
+          gridTemplateRows: "auto 1fr auto",
+          gap: 12,
         }}
       >
-        <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 18 }}>
-          LUMERA
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 18 }}>LUMERA</div>
+          <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 6 }}>
+            {user?.email || "—"} · {user?.role || "—"}
+          </div>
         </div>
 
         <nav style={{ display: "grid", gap: 8 }}>
@@ -37,6 +52,10 @@ export default function AppLayout() {
             Settings
           </NavLink>
         </nav>
+
+        <button onClick={onLogout} style={logoutBtn}>
+          Logout
+        </button>
       </aside>
 
       <main style={{ padding: 32 }}>
@@ -45,3 +64,12 @@ export default function AppLayout() {
     </div>
   );
 }
+
+const logoutBtn = {
+  padding: "10px 12px",
+  borderRadius: 12,
+  border: "1px solid var(--border)",
+  background: "white",
+  cursor: "pointer",
+  fontWeight: 700,
+};
