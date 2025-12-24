@@ -1,5 +1,4 @@
-import dotenv from "dotenv";
-dotenv.config();
+import "dotenv/config";
 
 import { connectDB } from "./config/db.js";
 import { createApp } from "./app.js";
@@ -11,6 +10,10 @@ connectDB()
   .then(() => {
     app.listen(PORT, () => {
       console.log(`🚀 API running on http://localhost:${PORT}`);
+      console.log(
+        "JWT_ACCESS_SECRET loaded:",
+        Boolean(process.env.JWT_ACCESS_SECRET)
+      );
     });
   })
   .catch((err) => {
