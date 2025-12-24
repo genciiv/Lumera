@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import dotenv from "dotenv";
+import { connectDB } from "./config/db.js";
 
 dotenv.config();
 
@@ -17,9 +18,14 @@ app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", service: "lumera-api" });
 });
 
-app.use((req, res) => {
-  res.status(404).json({ error: "Route not found" });
+app.get("/db-test", async (req, res) => {
+  // thjesht provon që kemi lidhje aktive me DB
+  const state = (await import("mongoose")).default.connection.readyState;
+  // 1 = connected
+  res.json({ mongoReadyState: state });
 });
+
+app.use((req, res) => res.status(404).json({ error: "Route not found" }));
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
@@ -28,4 +34,14 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = Number(process.env.PORT || 5000);
-app.listen(PORT, () => console.log(`API running on http://localhost:${PORT}`));
+
+connectDB()
+  .then(() => {
+    app.listen(PORT, () =>
+      console.log(`API running on http://localhost:${PORT}`)
+    );
+  })
+  .catch((err) => {
+    console.error("❌ Failed to start server:", err.message);
+    process.exit(1);
+  });
