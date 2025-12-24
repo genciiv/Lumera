@@ -1,0 +1,16 @@
+:root{
+  --bg: #F6F8FC;
+  --surface: #FFFFFF;
+  --text: #1E2430;
+  --muted: #667085;
+  --primary: #3B82F6;
+  --primary-hover: #2F6FE0;
+  --border: #E6EAF2;
+
+  --radius: 14px;
+  --shadow-sm: 0 6px 18px rgba(16, 24, 40, 0.06);
+
+  --space-3: 14px;
+  --space-4: 18px;
+  --space-6: 32px;
+}
