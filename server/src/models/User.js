@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema(
       ref: "Tenant",
       required: false,
     },
+
     email: {
       type: String,
       required: true,
@@ -15,11 +16,16 @@ const userSchema = new mongoose.Schema(
       unique: true,
     },
     passwordHash: { type: String, required: true },
+
     role: {
       type: String,
       enum: ["PlatformOwner", "TenantOwner", "Admin", "Staff"],
       default: "TenantOwner",
     },
+
+    // Profile fields (Dita 10)
+    fullName: { type: String, trim: true, default: "" },
+    avatarUrl: { type: String, trim: true, default: "" },
   },
   { timestamps: true }
 );

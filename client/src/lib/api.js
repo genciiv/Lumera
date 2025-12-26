@@ -1,69 +1,73 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_URL = "http://localhost:5000/api";
 
-// access token vetëm në memory
-let accessToken = null;
+// ✅ ruaje token në localStorage që të mos humbet me refresh
+const TOKEN_KEY = "lumera_access_token";
+
+let accessToken = localStorage.getItem(TOKEN_KEY);
 
 export function setAccessToken(token) {
   accessToken = token;
+  if (token) localStorage.setItem(TOKEN_KEY, token);
+  else localStorage.removeItem(TOKEN_KEY);
 }
 
 export function getAccessToken() {
   return accessToken;
 }
 
-async function refreshAccessToken() {
-  // refreshToken është cookie httpOnly, prandaj duhet credentials: "include"
+export function clearAccessToken() {
+  accessToken = null;
+  localStorage.removeItem(TOKEN_KEY);
+}
+
+async function refreshToken() {
   const res = await fetch(`${API_URL}/auth/refresh`, {
     method: "POST",
     credentials: "include",
   });
 
-  if (!res.ok) {
-    setAccessToken(null);
-    return null;
-  }
+  if (!res.ok) throw new Error("Refresh failed");
 
   const data = await res.json();
-  setAccessToken(data.accessToken);
+  setAccessToken(data.accessToken); // ✅ ruaj token-in e ri
   return data.accessToken;
 }
 
-export async function apiFetch(path, options = {}) {
-  const url = path.startsWith("http") ? path : `${API_URL}${path}`;
-
+export async function apiFetch(url, options = {}) {
   const headers = new Headers(options.headers || {});
-  if (!headers.has("Content-Type") && options.body) {
+  headers.set("Cache-Control", "no-store");
+
+  if (options.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 
-  // vendos Authorization nëse kemi token
   if (accessToken) {
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
-  const firstRes = await fetch(url, {
+  const res = await fetch(`${API_URL}${url}`, {
     ...options,
     headers,
-    credentials: "include", // KJO është kritike për cookies
-  });
-
-  // Nëse s’është 401, kthe direkt
-  if (firstRes.status !== 401) return firstRes;
-
-  // 401 -> provo refresh
-  const newToken = await refreshAccessToken();
-  if (!newToken) return firstRes;
-
-  // Provo request-in prapë me token të ri
-  const retryHeaders = new Headers(options.headers || {});
-  if (!retryHeaders.has("Content-Type") && options.body) {
-    retryHeaders.set("Content-Type", "application/json");
-  }
-  retryHeaders.set("Authorization", `Bearer ${newToken}`);
-
-  return fetch(url, {
-    ...options,
-    headers: retryHeaders,
     credentials: "include",
   });
+
+  if (res.status === 401) {
+    try {
+      await refreshToken();
+
+      const retryHeaders = new Headers(headers);
+      retryHeaders.set("Authorization", `Bearer ${accessToken}`);
+
+      return fetch(`${API_URL}${url}`, {
+        ...options,
+        headers: retryHeaders,
+        credentials: "include",
+      });
+    } catch {
+      clearAccessToken();
+      return res;
+    }
+  }
+
+  return res;
 }

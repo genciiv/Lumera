@@ -6,11 +6,10 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true); // bootstrap
-  const [error, setError] = useState("");
 
   async function loadMe() {
-    setError("");
-    const res = await apiFetch("/auth/me", { method: "GET" });
+    // përdor /users/me si profile endpoint
+    const res = await apiFetch("/users/me", { method: "GET" });
     if (!res.ok) {
       setUser(null);
       return null;
@@ -21,7 +20,6 @@ export function AuthProvider({ children }) {
   }
 
   async function login(email, password) {
-    setError("");
     const res = await apiFetch("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
@@ -38,7 +36,6 @@ export function AuthProvider({ children }) {
   }
 
   async function register(email, password) {
-    setError("");
     const res = await apiFetch("/auth/register", {
       method: "POST",
       body: JSON.stringify({ email, password }),
@@ -55,7 +52,6 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
-    setError("");
     try {
       await apiFetch("/auth/logout", { method: "POST" });
     } finally {
@@ -64,7 +60,23 @@ export function AuthProvider({ children }) {
     }
   }
 
-  // Bootstrap: në start provo /me (që do bëjë refresh automatik nëse cookie ekziston)
+  async function updateProfile({ fullName, avatarUrl }) {
+    const res = await apiFetch("/users/me", {
+      method: "PATCH",
+      body: JSON.stringify({ fullName, avatarUrl }),
+    });
+
+    if (!res.ok) {
+      const data = await safeJson(res);
+      throw new Error(data?.error || "Update failed");
+    }
+
+    const data = await res.json();
+    setUser(data.user);
+    return data.user;
+  }
+
+  // Bootstrap: tenton /users/me (nëse s’ka accessToken, apiFetch do provojë refresh automatikisht)
   useEffect(() => {
     (async () => {
       try {
@@ -80,15 +92,14 @@ export function AuthProvider({ children }) {
     () => ({
       user,
       loading,
-      error,
       isAuthed: Boolean(user) && Boolean(getAccessToken()),
       login,
       register,
       logout,
       loadMe,
-      setError,
+      updateProfile,
     }),
-    [user, loading, error]
+    [user, loading]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -13,11 +13,12 @@ function signRefreshToken(payload) {
 
 const isProd = process.env.NODE_ENV === "production";
 
+// ✅ DEV-friendly cookie (works on localhost)
 const refreshCookieOptions = {
   httpOnly: true,
-  secure: isProd, // true vetëm në prod (https)
+  secure: isProd, // prod => true (https), dev => false
   sameSite: isProd ? "none" : "lax",
-  path: "/api/auth/refresh",
+  path: "/", // ✅ IMPORTANT: makes cookie visible for localhost:5000
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
 
@@ -40,6 +41,8 @@ export async function register(req, res) {
     email: normalizedEmail,
     passwordHash,
     role: "TenantOwner",
+    fullName: "",
+    avatarUrl: "",
   });
 
   const payload = { userId: user._id.toString(), role: user.role };
@@ -47,10 +50,7 @@ export async function register(req, res) {
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
 
-  // refresh token -> cookie (httpOnly)
   res.cookie("refreshToken", refreshToken, refreshCookieOptions);
-
-  // access token -> response body
   res.status(201).json({ accessToken });
 }
 
@@ -97,7 +97,6 @@ export async function refresh(req, res) {
 }
 
 export async function logout(req, res) {
-  // clear cookie vetëm për path-in ku e vendosëm
   res.clearCookie("refreshToken", {
     ...refreshCookieOptions,
     maxAge: 0,
