@@ -6,6 +6,7 @@ export default function Register() {
   const navigate = useNavigate();
   const { register } = useAuth();
 
+  const [workspaceName, setWorkspaceName] = useState("My Workspace");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,7 +17,7 @@ export default function Register() {
     setMsg("");
     setLoading(true);
     try {
-      await register(email, password);
+      await register(email, password, workspaceName);
       navigate("/app", { replace: true });
     } catch (err) {
       setMsg(err.message || "Register failed");
@@ -28,14 +29,21 @@ export default function Register() {
   return (
     <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
       <label>
+        Workspace name
+        <input
+          style={inputStyle}
+          value={workspaceName}
+          onChange={(e) => setWorkspaceName(e.target.value)}
+        />
+      </label>
+
+      <label>
         Email
         <input
           style={inputStyle}
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="owner@company.com"
-          autoComplete="email"
         />
       </label>
 
@@ -46,8 +54,6 @@ export default function Register() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="At least 8 characters"
-          autoComplete="new-password"
         />
       </label>
 

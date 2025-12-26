@@ -1,15 +1,23 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { apiFetch, setAccessToken, getAccessToken } from "../lib/api.js";
+import {
+  apiFetch,
+  setAccessToken,
+  getAccessToken,
+  clearAccessToken,
+} from "../lib/api.js";
 
 const AuthContext = createContext(null);
 
+function safeJson(res) {
+  return res.json().catch(() => null);
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true); // bootstrap
+  const [loading, setLoading] = useState(true);
 
   async function loadMe() {
-    // përdor /users/me si profile endpoint
-    const res = await apiFetch("/users/me", { method: "GET" });
+    const res = await apiFetch("/users/me");
     if (!res.ok) {
       setUser(null);
       return null;
@@ -35,10 +43,10 @@ export function AuthProvider({ children }) {
     await loadMe();
   }
 
-  async function register(email, password) {
+  async function register(email, password, workspaceName) {
     const res = await apiFetch("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, workspaceName }),
     });
 
     if (!res.ok) {
@@ -54,16 +62,19 @@ export function AuthProvider({ children }) {
   async function logout() {
     try {
       await apiFetch("/auth/logout", { method: "POST" });
+    } catch {
+      // ignore
     } finally {
-      setAccessToken(null);
+      clearAccessToken();
       setUser(null);
+      window.location.href = "/login";
     }
   }
 
-  async function updateProfile({ fullName, avatarUrl }) {
+  async function updateProfile(payload) {
     const res = await apiFetch("/users/me", {
       method: "PATCH",
-      body: JSON.stringify({ fullName, avatarUrl }),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
@@ -76,28 +87,28 @@ export function AuthProvider({ children }) {
     return data.user;
   }
 
-  // Bootstrap: tenton /users/me (nëse s’ka accessToken, apiFetch do provojë refresh automatikisht)
+  // ✅ Bootstrap session on app start (pas refresh)
   useEffect(() => {
     (async () => {
       try {
-        await loadMe();
+        if (getAccessToken()) {
+          await loadMe();
+        }
       } finally {
         setLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const value = useMemo(
     () => ({
       user,
       loading,
-      isAuthed: Boolean(user) && Boolean(getAccessToken()),
       login,
       register,
       logout,
-      loadMe,
       updateProfile,
+      loadMe,
     }),
     [user, loading]
   );
@@ -107,14 +118,6 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
-}
-
-async function safeJson(res) {
-  try {
-    return await res.json();
-  } catch {
-    return null;
-  }
 }

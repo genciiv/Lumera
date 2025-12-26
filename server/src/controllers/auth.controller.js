@@ -1,7 +1,10 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 import User from "../models/User.js";
+import Tenant from "../models/Tenant.js";
 import { HttpError } from "../utils/httpError.js";
+import { slugify } from "../utils/slugify.js";
 
 function signAccessToken(payload) {
   return jwt.sign(payload, process.env.JWT_ACCESS_SECRET, { expiresIn: "15m" });
@@ -13,17 +16,30 @@ function signRefreshToken(payload) {
 
 const isProd = process.env.NODE_ENV === "production";
 
-// ✅ DEV-friendly cookie (works on localhost)
+// ✅ Dev-friendly cookie (localhost)
 const refreshCookieOptions = {
   httpOnly: true,
   secure: isProd, // prod => true (https), dev => false
   sameSite: isProd ? "none" : "lax",
-  path: "/", // ✅ IMPORTANT: makes cookie visible for localhost:5000
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  path: "/", // ✅ keep simple in dev
+  maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
+async function generateUniqueSlug(name) {
+  const base = slugify(name) || "workspace";
+  let candidate = base;
+  let i = 1;
+
+  while (await Tenant.findOne({ slug: candidate })) {
+    i += 1;
+    candidate = `${base}-${i}`;
+  }
+
+  return candidate;
+}
+
 export async function register(req, res) {
-  const { email, password } = req.body || {};
+  const { email, password, workspaceName } = req.body || {};
 
   if (!email || !password)
     throw new HttpError(400, "Email and password are required");
@@ -37,7 +53,14 @@ export async function register(req, res) {
 
   const passwordHash = await bcrypt.hash(password, 12);
 
+  const name = (workspaceName || "My Workspace").trim();
+  const slug = await generateUniqueSlug(name);
+
+  // ✅ Krijojmë user fillimisht me tenantId placeholder, pastaj e lidhim me tenant-in real
+  const placeholderTenantId = new mongoose.Types.ObjectId();
+
   const user = await User.create({
+    tenantId: placeholderTenantId, // do zëvendësohet pas krijimit të tenant
     email: normalizedEmail,
     passwordHash,
     role: "TenantOwner",
@@ -45,7 +68,20 @@ export async function register(req, res) {
     avatarUrl: "",
   });
 
-  const payload = { userId: user._id.toString(), role: user.role };
+  const tenant = await Tenant.create({
+    name,
+    slug,
+    ownerUserId: user._id,
+  });
+
+  user.tenantId = tenant._id;
+  await user.save();
+
+  const payload = {
+    userId: user._id.toString(),
+    role: user.role,
+    tenantId: tenant._id.toString(),
+  };
 
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
@@ -68,7 +104,11 @@ export async function login(req, res) {
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) throw new HttpError(401, "Invalid credentials");
 
-  const payload = { userId: user._id.toString(), role: user.role };
+  const payload = {
+    userId: user._id.toString(),
+    role: user.role,
+    tenantId: user.tenantId.toString(),
+  };
 
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
@@ -91,16 +131,13 @@ export async function refresh(req, res) {
   const accessToken = signAccessToken({
     userId: payload.userId,
     role: payload.role,
+    tenantId: payload.tenantId,
   });
 
   res.json({ accessToken });
 }
 
 export async function logout(req, res) {
-  res.clearCookie("refreshToken", {
-    ...refreshCookieOptions,
-    maxAge: 0,
-  });
-
+  res.clearCookie("refreshToken", { ...refreshCookieOptions, maxAge: 0 });
   res.json({ ok: true });
 }

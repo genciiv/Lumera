@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { apiFetch } from "../../lib/api.js";
 
 export default function Settings() {
   const { user, loading, updateProfile } = useAuth();
+  const [tenant, setTenant] = useState(null);
 
   const [fullName, setFullName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -13,6 +15,16 @@ export default function Settings() {
     setFullName(user?.fullName || "");
     setAvatarUrl(user?.avatarUrl || "");
   }, [user]);
+
+  useEffect(() => {
+    (async () => {
+      const res = await apiFetch("/tenants/me");
+      if (res.ok) {
+        const data = await res.json();
+        setTenant(data.tenant);
+      }
+    })();
+  }, []);
 
   async function onSave(e) {
     e.preventDefault();
@@ -34,7 +46,7 @@ export default function Settings() {
     <div style={{ maxWidth: 720 }}>
       <h1 style={{ margin: 0 }}>Settings</h1>
       <p style={{ color: "var(--muted)", marginTop: 6 }}>
-        Profile & session info.
+        Profile & workspace info.
       </p>
 
       <div className="card" style={{ padding: 18, marginTop: 18 }}>
@@ -43,6 +55,11 @@ export default function Settings() {
           <div style={{ color: "var(--muted)" }}>
             {user?.email} · {user?.role}
           </div>
+          {tenant ? (
+            <div style={{ color: "var(--muted)" }}>
+              Workspace: <b>{tenant.name}</b> ({tenant.slug})
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -57,10 +74,8 @@ export default function Settings() {
           Full name
           <input
             style={inputStyle}
-            type="text"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            placeholder="Your name"
           />
         </label>
 
@@ -68,10 +83,8 @@ export default function Settings() {
           Avatar URL (optional)
           <input
             style={inputStyle}
-            type="text"
             value={avatarUrl}
             onChange={(e) => setAvatarUrl(e.target.value)}
-            placeholder="https://..."
           />
         </label>
 

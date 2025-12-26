@@ -1,10 +1,11 @@
 const API_URL = "http://localhost:5000/api";
-
-// ✅ ruaje token në localStorage që të mos humbet me refresh
 const TOKEN_KEY = "lumera_access_token";
 
-let accessToken = localStorage.getItem(TOKEN_KEY);
+let accessToken = localStorage.getItem(TOKEN_KEY) || null;
 
+// ================================
+// TOKEN HELPERS
+// ================================
 export function setAccessToken(token) {
   accessToken = token;
   if (token) localStorage.setItem(TOKEN_KEY, token);
@@ -20,6 +21,9 @@ export function clearAccessToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+// ================================
+// REFRESH TOKEN
+// ================================
 async function refreshToken() {
   const res = await fetch(`${API_URL}/auth/refresh`, {
     method: "POST",
@@ -29,10 +33,13 @@ async function refreshToken() {
   if (!res.ok) throw new Error("Refresh failed");
 
   const data = await res.json();
-  setAccessToken(data.accessToken); // ✅ ruaj token-in e ri
+  setAccessToken(data.accessToken);
   return data.accessToken;
 }
 
+// ================================
+// API FETCH
+// ================================
 export async function apiFetch(url, options = {}) {
   const headers = new Headers(options.headers || {});
   headers.set("Cache-Control", "no-store");
@@ -45,7 +52,7 @@ export async function apiFetch(url, options = {}) {
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
-  const res = await fetch(`${API_URL}${url}`, {
+  let res = await fetch(`${API_URL}${url}`, {
     ...options,
     headers,
     credentials: "include",
@@ -58,14 +65,14 @@ export async function apiFetch(url, options = {}) {
       const retryHeaders = new Headers(headers);
       retryHeaders.set("Authorization", `Bearer ${accessToken}`);
 
-      return fetch(`${API_URL}${url}`, {
+      res = await fetch(`${API_URL}${url}`, {
         ...options,
         headers: retryHeaders,
         credentials: "include",
       });
     } catch {
       clearAccessToken();
-      return res;
+      throw new Error("Session expired");
     }
   }
 

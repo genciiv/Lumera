@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema(
     tenantId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Tenant",
-      required: false,
+      required: true,
     },
 
     email: {
@@ -23,7 +23,6 @@ const userSchema = new mongoose.Schema(
       default: "TenantOwner",
     },
 
-    // Profile fields (Dita 10)
     fullName: { type: String, trim: true, default: "" },
     avatarUrl: { type: String, trim: true, default: "" },
   },
