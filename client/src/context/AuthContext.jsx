@@ -49,12 +49,9 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ email, password, workspaceName }),
     });
 
-    if (!res.ok) {
-      const data = await safeJson(res);
-      throw new Error(data?.error || "Register failed");
-    }
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.error || "Register failed");
 
-    const data = await res.json();
     setAccessToken(data.accessToken);
     await loadMe();
   }

@@ -3,6 +3,7 @@ import { requireAuth } from "../middlewares/requireAuth.js";
 import { requireRole } from "../middlewares/requireRole.js";
 import {
   listTenantUsers,
+  createTenantUser,
   updateUserRole,
 } from "../controllers/adminUsers.controller.js";
 
@@ -14,6 +15,13 @@ router.get(
   requireAuth,
   requireRole(["TenantOwner", "Admin"]),
   (req, res, next) => listTenantUsers(req, res).catch(next)
+);
+
+router.post(
+  "/admin/users",
+  requireAuth,
+  requireRole(["TenantOwner", "Admin"]),
+  (req, res, next) => createTenantUser(req, res).catch(next)
 );
 
 router.patch(
