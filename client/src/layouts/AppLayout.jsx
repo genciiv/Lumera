@@ -14,6 +14,8 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
+  const isAdmin = ["TenantOwner", "Admin"].includes(user?.role); // ✅ SHTO KETE
+
   async function onLogout() {
     await logout();
     navigate("/login", { replace: true });
@@ -48,6 +50,14 @@ export default function AppLayout() {
           <NavLink to="/app" end style={linkStyle}>
             Dashboard
           </NavLink>
+
+          {/* ✅ Vetëm TenantOwner/Admin e shohin Users */}
+          {isAdmin && (
+            <NavLink to="/app/users" style={linkStyle}>
+              Users
+            </NavLink>
+          )}
+
           <NavLink to="/app/settings" style={linkStyle}>
             Settings
           </NavLink>
