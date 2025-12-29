@@ -8,7 +8,7 @@ import Login from "./pages/auth/Login.jsx";
 import Register from "./pages/auth/Register.jsx";
 import Dashboard from "./pages/dashboard/Dashboard.jsx";
 import Settings from "./pages/dashboard/Settings.jsx";
-import Users from "./pages/dashboard/Users.jsx"; // ✅ SHTO KETE
+import Users from "./pages/dashboard/Users.jsx";
 import NotFound from "./pages/NotFound.jsx";
 
 export default function App() {
@@ -27,7 +27,7 @@ export default function App() {
           <Route path="/app" element={<AppLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="settings" element={<Settings />} />
-            <Route path="users" element={<Users />} /> {/* ✅ SHTO KETE */}
+            <Route path="users" element={<Users />} />
           </Route>
         </Route>
 

@@ -36,6 +36,7 @@ app.get("/", (req, res) => res.json({ ok: true, name: "Lumera API" }));
 app.use("/api", authRoutes);
 app.use("/api", userRoutes);
 app.use("/api/tenants", tenantRoutes);
+app.use("/api", userRoutes);
 
 // --- Start server ---
 const PORT = process.env.PORT || 5000;
