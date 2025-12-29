@@ -2,29 +2,34 @@ import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
-    tenantId: {
+    workspaceId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Tenant",
+      ref: "Workspace",
       required: true,
     },
 
     email: {
       type: String,
       required: true,
+      unique: true,
       lowercase: true,
       trim: true,
-      unique: true,
     },
     passwordHash: { type: String, required: true },
 
-    role: {
-      type: String,
-      enum: ["PlatformOwner", "TenantOwner", "Admin", "Staff"],
-      default: "TenantOwner",
+    fullName: { type: String, default: "" },
+    avatarUrl: { type: String, default: "" },
+
+    tenant: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tenant",
     },
 
-    fullName: { type: String, trim: true, default: "" },
-    avatarUrl: { type: String, trim: true, default: "" },
+    role: {
+      type: String,
+      enum: ["TenantOwner", "Admin", "Member"],
+      default: "Member",
+    },
   },
   { timestamps: true }
 );

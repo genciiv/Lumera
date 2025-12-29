@@ -1,29 +1,26 @@
 import User from "../models/User.js";
-import { HttpError } from "../utils/httpError.js";
+import Workspace from "../models/Workspace.js";
+import { HttpError } from "../utils/HttpError.js";
 
-export async function getMe(req, res) {
-  const user = await User.findOne({
-    _id: req.user.userId,
-    tenantId: req.user.tenantId,
-  }).select("_id email role tenantId fullName avatarUrl createdAt updatedAt");
+export async function me(req, res) {
+  const userId = req.user?.userId;
+  if (!userId) throw new HttpError(401, "Unauthorized");
 
+  const user = await User.findById(userId).lean();
   if (!user) throw new HttpError(404, "User not found");
-  res.json({ user });
-}
 
-export async function updateMe(req, res) {
-  const { fullName, avatarUrl } = req.body || {};
+  const workspace = await Workspace.findById(user.workspaceId).lean();
 
-  const updates = {};
-  if (typeof fullName === "string") updates.fullName = fullName.trim();
-  if (typeof avatarUrl === "string") updates.avatarUrl = avatarUrl.trim();
-
-  const user = await User.findOneAndUpdate(
-    { _id: req.user.userId, tenantId: req.user.tenantId },
-    updates,
-    { new: true, runValidators: true }
-  ).select("_id email role tenantId fullName avatarUrl createdAt updatedAt");
-
-  if (!user) throw new HttpError(404, "User not found");
-  res.json({ user });
+  res.json({
+    user: {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+      fullName: user.fullName || "",
+      avatarUrl: user.avatarUrl || "",
+      workspace: workspace
+        ? { id: workspace._id, name: workspace.name, slug: workspace.slug }
+        : null,
+    },
+  });
 }

@@ -1,15 +1,9 @@
 const API_URL = "http://localhost:5000/api";
-const TOKEN_KEY = "lumera_access_token";
 
-let accessToken = localStorage.getItem(TOKEN_KEY) || null;
+let accessToken = null;
 
-// ================================
-// TOKEN HELPERS
-// ================================
 export function setAccessToken(token) {
   accessToken = token;
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
 }
 
 export function getAccessToken() {
@@ -18,12 +12,8 @@ export function getAccessToken() {
 
 export function clearAccessToken() {
   accessToken = null;
-  localStorage.removeItem(TOKEN_KEY);
 }
 
-// ================================
-// REFRESH TOKEN
-// ================================
 async function refreshToken() {
   const res = await fetch(`${API_URL}/auth/refresh`, {
     method: "POST",
@@ -33,13 +23,10 @@ async function refreshToken() {
   if (!res.ok) throw new Error("Refresh failed");
 
   const data = await res.json();
-  setAccessToken(data.accessToken);
-  return data.accessToken;
+  accessToken = data.accessToken;
+  return accessToken;
 }
 
-// ================================
-// API FETCH
-// ================================
 export async function apiFetch(url, options = {}) {
   const headers = new Headers(options.headers || {});
   headers.set("Cache-Control", "no-store");
@@ -52,7 +39,7 @@ export async function apiFetch(url, options = {}) {
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
-  let res = await fetch(`${API_URL}${url}`, {
+  const res = await fetch(`${API_URL}${url}`, {
     ...options,
     headers,
     credentials: "include",
@@ -65,7 +52,7 @@ export async function apiFetch(url, options = {}) {
       const retryHeaders = new Headers(headers);
       retryHeaders.set("Authorization", `Bearer ${accessToken}`);
 
-      res = await fetch(`${API_URL}${url}`, {
+      return fetch(`${API_URL}${url}`, {
         ...options,
         headers: retryHeaders,
         credentials: "include",
