@@ -1,165 +1,196 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
-
 import User from "../models/User.js";
-import Workspace from "../models/Workspace.js";
-
-import { HttpError } from "../utils/HttpError.js";
-import { signAccessToken, signRefreshToken } from "../utils/tokens.js";
-
 import Tenant from "../models/Tenant.js";
 
-const isProd = process.env.NODE_ENV === "production";
+/* ============================
+   TOKEN HELPERS
+============================ */
 
-const refreshCookieOptions = {
-  httpOnly: true,
-  secure: isProd, // prod: true (https)
-  sameSite: isProd ? "none" : "lax",
-  path: "/api/auth/refresh",
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-};
-
-// ---- helpers ----
-function slugify(str) {
-  return String(str || "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
+function signAccessToken(user) {
+  return jwt.sign(
+    {
+      sub: user._id.toString(),
+      tenantId: user.tenantId?.toString(),
+      role: user.role,
+    },
+    process.env.JWT_ACCESS_SECRET,
+    { expiresIn: "15m" }
+  );
 }
 
-async function makeUniqueSlug(name) {
-  const base = slugify(name) || "workspace";
-  let slug = base;
-  let i = 1;
-
-  while (await Workspace.findOne({ slug })) {
-    i += 1;
-    slug = `${base}-${i}`;
-  }
-  return slug;
+function signRefreshToken(user) {
+  return jwt.sign(
+    {
+      sub: user._id.toString(),
+      tenantId: user.tenantId?.toString(),
+    },
+    process.env.JWT_REFRESH_SECRET,
+    { expiresIn: "7d" }
+  );
 }
 
-// ---- controllers ----
+function setRefreshCookie(res, token) {
+  const isProd = process.env.NODE_ENV === "production";
+
+  res.cookie("refreshToken", token, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
+    path: "/api/auth/refresh",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+}
+
+function clearRefreshCookie(res) {
+  const isProd = process.env.NODE_ENV === "production";
+
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
+    path: "/api/auth/refresh",
+  });
+}
+
+/* ============================
+   REGISTER
+============================ */
 export async function register(req, res) {
-  const { email, password, workspaceName } = req.body || {};
-
-  const em = String(email || "")
-    .toLowerCase()
-    .trim();
-  const pw = String(password || "").trim();
-  const wn = String(workspaceName || "").trim();
-
-  if (!wn) throw new HttpError(400, "Workspace name is required");
-  if (!em || !pw) throw new HttpError(400, "Email and password are required");
-
-  const exists = await User.findOne({ email: em });
-  if (exists) throw new HttpError(409, "Email already in use");
-
-  const passwordHash = await bcrypt.hash(pw, 10);
-
-  // 1) create workspace first
-  const slug = await makeUniqueSlug(wn);
-
-  // ownerUserId is required by schema; we set a temporary ObjectId then replace it
-  const tempOwnerId = new mongoose.Types.ObjectId();
-
-  const workspace = await Workspace.create({
-    name: wn,
-    slug,
-    ownerUserId: tempOwnerId,
-  });
-
-  const tenant = await Tenant.create({
-    name: workspaceName,
-    owner: user._id,
-  });
-
-  user.tenant = tenant._id;
-  await user.save();
-
-  // 2) create user as TenantOwner
-  const user = await User.create({
-    workspaceId: workspace._id,
-    email: em,
-    passwordHash,
-    role: "TenantOwner",
-  });
-
-  // 3) update workspace ownerUserId with real user id
-  workspace.ownerUserId = user._id;
-  await workspace.save();
-
-  const accessToken = signAccessToken({
-    userId: user._id,
-    role: user.role,
-    workspaceId: workspace._id,
-  });
-
-  const refreshToken = signRefreshToken({
-    userId: user._id,
-    role: user.role,
-    workspaceId: workspace._id,
-  });
-
-  res.cookie("refreshToken", refreshToken, refreshCookieOptions);
-  res.status(201).json({ accessToken });
-}
-
-export async function login(req, res) {
-  const { email, password } = req.body || {};
-
-  const em = String(email || "")
-    .toLowerCase()
-    .trim();
-  const pw = String(password || "").trim();
-
-  if (!em || !pw) throw new HttpError(400, "Email and password are required");
-
-  const user = await User.findOne({ email: em });
-  if (!user) throw new HttpError(401, "Invalid credentials");
-
-  const ok = await bcrypt.compare(pw, user.passwordHash);
-  if (!ok) throw new HttpError(401, "Invalid credentials");
-
-  const accessToken = signAccessToken({
-    userId: user._id,
-    role: user.role,
-    workspaceId: user.workspaceId,
-  });
-
-  const refreshToken = signRefreshToken({
-    userId: user._id,
-    role: user.role,
-    workspaceId: user.workspaceId,
-  });
-
-  res.cookie("refreshToken", refreshToken, refreshCookieOptions);
-  res.json({ accessToken });
-}
-
-export async function refresh(req, res) {
-  const token = req.cookies?.refreshToken;
-  if (!token) throw new HttpError(401, "Missing refresh token");
-
-  let payload;
   try {
-    payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
-  } catch {
-    throw new HttpError(401, "Invalid refresh token");
+    const { workspaceName, email, password, fullName } = req.body;
+
+    if (!workspaceName || !email || !password) {
+      return res.status(400).json({
+        message: "workspaceName, email and password are required",
+      });
+    }
+
+    // 1️⃣ krijo tenant (owner përkohësisht)
+    const tenant = await Tenant.create({
+      name: workspaceName,
+      slug: workspaceName.trim().toLowerCase().replace(/\s+/g, "-"),
+      owner: new mongoose.Types.ObjectId(),
+    });
+
+    // 2️⃣ kontroll email në tenant
+    const existing = await User.findOne({
+      tenantId: tenant._id,
+      email,
+    });
+
+    if (existing) {
+      return res.status(400).json({ message: "Email already in use" });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // 3️⃣ krijo user
+    const user = await User.create({
+      tenantId: tenant._id,
+      email,
+      passwordHash,
+      fullName: fullName || "",
+      role: "TenantOwner",
+    });
+
+    // 4️⃣ lidh tenant me owner
+    tenant.owner = user._id;
+    await tenant.save();
+
+    const accessToken = signAccessToken(user);
+    const refreshToken = signRefreshToken(user);
+
+    setRefreshCookie(res, refreshToken);
+
+    return res.status(201).json({
+      accessToken,
+      user: {
+        _id: user._id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+        tenantId: user.tenantId,
+      },
+      tenant: {
+        _id: tenant._id,
+        name: tenant.name,
+        slug: tenant.slug,
+      },
+    });
+  } catch (err) {
+    console.error("REGISTER ERROR:", err);
+    return res.status(500).json({ message: "Server error" });
   }
-
-  const accessToken = signAccessToken({
-    userId: payload.userId,
-    role: payload.role,
-    workspaceId: payload.workspaceId,
-  });
-
-  res.json({ accessToken });
 }
 
+/* ============================
+   LOGIN
+============================ */
+export async function login(req, res) {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password)
+      return res.status(400).json({ message: "Missing credentials" });
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(401).json({ message: "Invalid credentials" });
+
+    const ok = await bcrypt.compare(password, user.passwordHash);
+    if (!ok) return res.status(401).json({ message: "Invalid credentials" });
+
+    const accessToken = signAccessToken(user);
+    const refreshToken = signRefreshToken(user);
+
+    setRefreshCookie(res, refreshToken);
+
+    return res.json({
+      accessToken,
+      user: {
+        _id: user._id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+        tenantId: user.tenantId,
+      },
+    });
+  } catch (err) {
+    console.error("LOGIN ERROR:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+/* ============================
+   REFRESH
+============================ */
+export async function refresh(req, res) {
+  try {
+    const token = req.cookies?.refreshToken;
+    if (!token) return res.status(401).json({ message: "No refresh token" });
+
+    const payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+
+    const user = await User.findById(payload.sub);
+    if (!user) return res.status(401).json({ message: "User not found" });
+
+    const accessToken = signAccessToken(user);
+    const newRefreshToken = signRefreshToken(user);
+
+    setRefreshCookie(res, newRefreshToken);
+
+    return res.json({ accessToken });
+  } catch (err) {
+    console.error("REFRESH ERROR:", err);
+    return res.status(401).json({ message: "Invalid refresh token" });
+  }
+}
+
+/* ============================
+   LOGOUT
+============================ */
 export async function logout(req, res) {
-  res.clearCookie("refreshToken", { ...refreshCookieOptions, maxAge: 0 });
-  res.json({ ok: true });
+  clearRefreshCookie(res);
+  return res.json({ ok: true });
 }

@@ -1,18 +1,16 @@
 import { Router } from "express";
 import {
-  register,
   login,
+  register,
   refresh,
   logout,
 } from "../controllers/auth.controller.js";
 
 const router = Router();
 
-router.post("/auth/register", (req, res, next) =>
-  register(req, res).catch(next)
-);
-router.post("/auth/login", (req, res, next) => login(req, res).catch(next));
-router.post("/auth/refresh", (req, res, next) => refresh(req, res).catch(next));
-router.post("/auth/logout", (req, res, next) => logout(req, res).catch(next));
+router.post("/auth/register", register);
+router.post("/auth/login", login);
+router.post("/auth/refresh", refresh);
+router.post("/auth/logout", logout);
 
 export default router;

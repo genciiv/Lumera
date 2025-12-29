@@ -1,15 +1,14 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import {
-  apiFetch,
-  setAccessToken,
-  getAccessToken,
-  clearAccessToken,
-} from "../lib/api.js";
+import { apiFetch, setAccessToken, clearAccessToken } from "../lib/api.js";
 
 const AuthContext = createContext(null);
 
-function safeJson(res) {
-  return res.json().catch(() => null);
+async function safeJson(res) {
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
 }
 
 export function AuthProvider({ children }) {
@@ -18,13 +17,16 @@ export function AuthProvider({ children }) {
 
   async function loadMe() {
     const res = await apiFetch("/users/me");
+
     if (!res.ok) {
       setUser(null);
       return null;
     }
-    const data = await res.json();
-    setUser(data.user);
-    return data.user;
+
+    const data = await safeJson(res);
+    const u = data?.user || null;
+    setUser(u);
+    return u;
   }
 
   async function login(email, password) {
@@ -34,11 +36,13 @@ export function AuthProvider({ children }) {
     });
 
     if (!res.ok) {
-      const data = await safeJson(res);
-      throw new Error(data?.error || "Login failed");
+      const data = await safeJson(res.clone());
+      throw new Error(data?.error || data?.message || "Login failed");
     }
 
-    const data = await res.json();
+    const data = await safeJson(res);
+    if (!data?.accessToken) throw new Error("Missing accessToken from server");
+
     setAccessToken(data.accessToken);
     await loadMe();
   }
@@ -49,8 +53,13 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ email, password, workspaceName }),
     });
 
-    const data = await res.json().catch(() => null);
-    if (!res.ok) throw new Error(data?.error || "Register failed");
+    if (!res.ok) {
+      const data = await safeJson(res.clone());
+      throw new Error(data?.error || data?.message || "Register failed");
+    }
+
+    const data = await safeJson(res);
+    if (!data?.accessToken) throw new Error("Missing accessToken from server");
 
     setAccessToken(data.accessToken);
     await loadMe();
@@ -64,7 +73,7 @@ export function AuthProvider({ children }) {
     } finally {
       clearAccessToken();
       setUser(null);
-      window.location.href = "/login";
+      // mos e detyro reload, ProtectedRoute do e çojë vetë te /login
     }
   }
 
@@ -75,26 +84,28 @@ export function AuthProvider({ children }) {
     });
 
     if (!res.ok) {
-      const data = await safeJson(res);
-      throw new Error(data?.error || "Update failed");
+      const data = await safeJson(res.clone());
+      throw new Error(data?.error || data?.message || "Update failed");
     }
 
-    const data = await res.json();
-    setUser(data.user);
-    return data.user;
+    const data = await safeJson(res);
+    const u = data?.user || null;
+    setUser(u);
+    return u;
   }
 
   // ✅ Bootstrap session on app start (pas refresh)
+  // Mos kontrollo getAccessToken() sepse humbet pas refresh (RAM).
+  // Lëre apiFetch të bëjë refresh me cookie nëse ekziston.
   useEffect(() => {
     (async () => {
       try {
-        if (getAccessToken()) {
-          await loadMe();
-        }
+        await loadMe();
       } finally {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const value = useMemo(

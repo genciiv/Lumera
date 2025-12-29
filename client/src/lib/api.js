@@ -1,4 +1,5 @@
-const API_URL = "http://localhost:5000/api";
+// ✅ Same-origin (Vite proxy do e çojë te :5000)
+const API_URL = "/api";
 
 let accessToken = null;
 
@@ -18,11 +19,14 @@ async function refreshToken() {
   const res = await fetch(`${API_URL}/auth/refresh`, {
     method: "POST",
     credentials: "include",
+    headers: { "Cache-Control": "no-store" },
   });
 
   if (!res.ok) throw new Error("Refresh failed");
 
-  const data = await res.json();
+  const data = await res.json().catch(() => null);
+  if (!data?.accessToken) throw new Error("No accessToken");
+
   accessToken = data.accessToken;
   return accessToken;
 }
@@ -45,7 +49,8 @@ export async function apiFetch(url, options = {}) {
     credentials: "include",
   });
 
-  if (res.status === 401) {
+  // ✅ vetëm kur s'është refresh endpoint
+  if (res.status === 401 && url !== "/auth/refresh") {
     try {
       await refreshToken();
 
@@ -59,6 +64,7 @@ export async function apiFetch(url, options = {}) {
       });
     } catch {
       clearAccessToken();
+      // mos e shpërnda gabimin në loop; lëre caller ta trajtojë
       throw new Error("Session expired");
     }
   }

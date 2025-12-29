@@ -1,20 +1,24 @@
 import jwt from "jsonwebtoken";
-import { HttpError } from "../utils/HttpError.js";
 
-export function requireAuth(req, res, next) {
-  const header = req.headers.authorization;
-
-  if (!header || !header.startsWith("Bearer ")) {
-    return next(new HttpError(401, "Missing or invalid Authorization header"));
-  }
-
-  const token = header.slice("Bearer ".length);
-
+export default function requireAuth(req, res, next) {
   try {
+    const auth = req.headers.authorization || "";
+    const [type, token] = auth.split(" ");
+
+    if (type !== "Bearer" || !token) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
     const payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
-    req.user = payload; // { userId, role, workspaceId, iat, exp }
+
+    req.user = {
+      id: payload.sub,
+      tenantId: payload.tenantId,
+      role: payload.role,
+    };
+
     return next();
-  } catch {
-    return next(new HttpError(401, "Invalid or expired access token"));
+  } catch (err) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
 }

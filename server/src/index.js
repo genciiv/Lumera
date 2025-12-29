@@ -18,25 +18,25 @@ dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
 const app = express();
 
-// --- Middlewares ---
 app.use(express.json());
 app.use(cookieParser());
 
-// CORS (client = 5173)
+// ✅ CORS (në dev mund të jetë 5173)
+// Me Vite proxy, request vjen nga 5173 gjithsesi.
+// Keep it:
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
     credentials: true,
   })
 );
 
-// --- Routes ---
 app.get("/", (req, res) => res.json({ ok: true, name: "Lumera API" }));
 
+// ✅ Routes (vetëm 1 herë secila)
 app.use("/api", authRoutes);
 app.use("/api", userRoutes);
-app.use("/api/tenants", tenantRoutes);
-app.use("/api", userRoutes);
+app.use("/api", tenantRoutes);
 
 // --- Start server ---
 const PORT = process.env.PORT || 5000;
