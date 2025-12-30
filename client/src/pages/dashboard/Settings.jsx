@@ -10,6 +10,7 @@ export default function Settings() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  const [tenantMsg, setTenantMsg] = useState("");
 
   useEffect(() => {
     setFullName(user?.fullName || "");
@@ -18,10 +19,29 @@ export default function Settings() {
 
   useEffect(() => {
     (async () => {
-      const res = await apiFetch("/tenants/me");
-      if (res.ok) {
-        const data = await res.json();
-        setTenant(data.tenant);
+      setTenantMsg("");
+      try {
+        // endpoint: /api/tenants/me  (apiFetch already prefixes /api)
+        const res = await apiFetch("/tenants/me");
+
+        // Nëse serveri kthen HTML (404 page) kjo e shmang crash-in
+        const ct = res.headers.get("content-type") || "";
+        const data = ct.includes("application/json")
+          ? await res.json().catch(() => null)
+          : null;
+
+        if (!res.ok) {
+          setTenant(null);
+          setTenantMsg(
+            data?.message || data?.error || `Tenant load failed (${res.status})`
+          );
+          return;
+        }
+
+        setTenant(data?.tenant || data || null);
+      } catch (e) {
+        setTenant(null);
+        setTenantMsg(e?.message || "Tenant load failed");
       }
     })();
   }, []);
@@ -34,7 +54,7 @@ export default function Settings() {
       await updateProfile({ fullName, avatarUrl });
       setMsg("✅ Saved");
     } catch (err) {
-      setMsg(err.message || "Update failed");
+      setMsg(err?.message || "Update failed");
     } finally {
       setSaving(false);
     }
@@ -55,9 +75,21 @@ export default function Settings() {
           <div style={{ color: "var(--muted)" }}>
             {user?.email} · {user?.role}
           </div>
+
           {tenant ? (
             <div style={{ color: "var(--muted)" }}>
-              Workspace: <b>{tenant.name}</b> ({tenant.slug})
+              Workspace: <b>{tenant.name}</b>
+              {tenant.slug ? ` (${tenant.slug})` : ""}
+            </div>
+          ) : tenantMsg ? (
+            <div
+              style={{
+                ...noteBox,
+                borderColor: "rgba(239,68,68,.4)",
+                background: "rgba(239,68,68,.08)",
+              }}
+            >
+              {tenantMsg}
             </div>
           ) : null}
         </div>

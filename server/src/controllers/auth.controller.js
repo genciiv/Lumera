@@ -1,18 +1,15 @@
+// server/src/controllers/auth.controller.js
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import User from "../models/User.js";
 import Tenant from "../models/Tenant.js";
 
-/* ============================
-   TOKEN HELPERS
-============================ */
-
 function signAccessToken(user) {
   return jwt.sign(
     {
       sub: user._id.toString(),
-      tenantId: user.tenantId?.toString(),
+      tenantId: user.tenantId.toString(),
       role: user.role,
     },
     process.env.JWT_ACCESS_SECRET,
@@ -24,7 +21,7 @@ function signRefreshToken(user) {
   return jwt.sign(
     {
       sub: user._id.toString(),
-      tenantId: user.tenantId?.toString(),
+      tenantId: user.tenantId.toString(),
     },
     process.env.JWT_REFRESH_SECRET,
     { expiresIn: "7d" }
@@ -33,10 +30,9 @@ function signRefreshToken(user) {
 
 function setRefreshCookie(res, token) {
   const isProd = process.env.NODE_ENV === "production";
-
   res.cookie("refreshToken", token, {
     httpOnly: true,
-    secure: isProd,
+    secure: isProd, // localhost => false
     sameSite: isProd ? "none" : "lax",
     path: "/api/auth/refresh",
     maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -45,7 +41,6 @@ function setRefreshCookie(res, token) {
 
 function clearRefreshCookie(res) {
   const isProd = process.env.NODE_ENV === "production";
-
   res.clearCookie("refreshToken", {
     httpOnly: true,
     secure: isProd,
@@ -54,54 +49,52 @@ function clearRefreshCookie(res) {
   });
 }
 
-/* ============================
-   REGISTER
-============================ */
+// POST /api/auth/register
 export async function register(req, res) {
   try {
     const { workspaceName, email, password, fullName } = req.body;
 
     if (!workspaceName || !email || !password) {
-      return res.status(400).json({
-        message: "workspaceName, email and password are required",
-      });
+      return res
+        .status(400)
+        .json({ message: "workspaceName, email and password are required" });
     }
 
-    // 1️⃣ krijo tenant (owner përkohësisht)
-    const tenant = await Tenant.create({
-      name: workspaceName,
-      slug: workspaceName.trim().toLowerCase().replace(/\s+/g, "-"),
-      owner: new mongoose.Types.ObjectId(),
-    });
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const slug = workspaceName.trim().toLowerCase().replace(/\s+/g, "-");
 
-    // 2️⃣ kontroll email në tenant
-    const existing = await User.findOne({
-      tenantId: tenant._id,
-      email,
-    });
+    // ✅ Zgjidh ciklin Tenant.owner (required) & User.tenantId (required)
+    const tenantId = new mongoose.Types.ObjectId();
+    const userId = new mongoose.Types.ObjectId();
 
-    if (existing) {
-      return res.status(400).json({ message: "Email already in use" });
+    // kontrollo që slug të mos jetë zënë
+    const slugExists = await Tenant.findOne({ slug }).lean();
+    if (slugExists) {
+      return res.status(400).json({ message: "Workspace already exists" });
     }
 
+    // password hash
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // 3️⃣ krijo user
+    // krijo tenant + user me ID-të e paracaktuara
+    const tenant = await Tenant.create({
+      _id: tenantId,
+      name: workspaceName.trim(),
+      slug,
+      owner: userId,
+    });
+
     const user = await User.create({
-      tenantId: tenant._id,
-      email,
+      _id: userId,
+      tenantId: tenantId,
+      email: normalizedEmail,
       passwordHash,
       fullName: fullName || "",
       role: "TenantOwner",
     });
 
-    // 4️⃣ lidh tenant me owner
-    tenant.owner = user._id;
-    await tenant.save();
-
     const accessToken = signAccessToken(user);
     const refreshToken = signRefreshToken(user);
-
     setRefreshCookie(res, refreshToken);
 
     return res.status(201).json({
@@ -117,25 +110,35 @@ export async function register(req, res) {
         _id: tenant._id,
         name: tenant.name,
         slug: tenant.slug,
+        owner: tenant.owner,
       },
     });
   } catch (err) {
+    // duplicate key (index unique)
+    if (err?.code === 11000) {
+      return res.status(400).json({ message: "Email already in use" });
+    }
     console.error("REGISTER ERROR:", err);
     return res.status(500).json({ message: "Server error" });
   }
 }
 
-/* ============================
-   LOGIN
-============================ */
+// POST /api/auth/login
 export async function login(req, res) {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password)
-      return res.status(400).json({ message: "Missing credentials" });
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
+    }
 
-    const user = await User.findOne({ email });
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    // ⚠️ Nëse email mund të ekzistojë në tenants të ndryshëm, kjo është “ambigue”.
+    // Për momentin marrim të parin (më vonë mund ta bëjmë login me workspace/tenant slug).
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
     const ok = await bcrypt.compare(password, user.passwordHash);
@@ -143,7 +146,6 @@ export async function login(req, res) {
 
     const accessToken = signAccessToken(user);
     const refreshToken = signRefreshToken(user);
-
     setRefreshCookie(res, refreshToken);
 
     return res.json({
@@ -151,7 +153,7 @@ export async function login(req, res) {
       user: {
         _id: user._id,
         email: user.email,
-        fullName: user.fullName,
+        fullName: user.fullName || "",
         role: user.role,
         tenantId: user.tenantId,
       },
@@ -162,34 +164,34 @@ export async function login(req, res) {
   }
 }
 
-/* ============================
-   REFRESH
-============================ */
+// POST /api/auth/refresh
 export async function refresh(req, res) {
   try {
     const token = req.cookies?.refreshToken;
     if (!token) return res.status(401).json({ message: "No refresh token" });
 
-    const payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    let payload;
+    try {
+      payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    } catch {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
 
     const user = await User.findById(payload.sub);
     if (!user) return res.status(401).json({ message: "User not found" });
 
     const accessToken = signAccessToken(user);
     const newRefreshToken = signRefreshToken(user);
-
     setRefreshCookie(res, newRefreshToken);
 
     return res.json({ accessToken });
   } catch (err) {
     console.error("REFRESH ERROR:", err);
-    return res.status(401).json({ message: "Invalid refresh token" });
+    return res.status(500).json({ message: "Server error" });
   }
 }
 
-/* ============================
-   LOGOUT
-============================ */
+// POST /api/auth/logout
 export async function logout(req, res) {
   clearRefreshCookie(res);
   return res.json({ ok: true });

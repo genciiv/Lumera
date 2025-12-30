@@ -1,14 +1,16 @@
+// client/src/context/AuthContext.jsx
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { apiFetch, setAccessToken, clearAccessToken } from "../lib/api.js";
+import {
+  apiFetch,
+  setAccessToken,
+  getAccessToken,
+  clearAccessToken,
+} from "../lib/api.js";
 
 const AuthContext = createContext(null);
 
-async function safeJson(res) {
-  try {
-    return await res.json();
-  } catch {
-    return null;
-  }
+function safeJson(res) {
+  return res.json().catch(() => null);
 }
 
 export function AuthProvider({ children }) {
@@ -17,16 +19,13 @@ export function AuthProvider({ children }) {
 
   async function loadMe() {
     const res = await apiFetch("/users/me");
-
     if (!res.ok) {
       setUser(null);
       return null;
     }
-
-    const data = await safeJson(res);
-    const u = data?.user || null;
-    setUser(u);
-    return u;
+    const data = await res.json().catch(() => null);
+    setUser(data?.user || null);
+    return data?.user || null;
   }
 
   async function login(email, password) {
@@ -35,31 +34,23 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ email, password }),
     });
 
-    if (!res.ok) {
-      const data = await safeJson(res.clone());
-      throw new Error(data?.error || data?.message || "Login failed");
-    }
-
     const data = await safeJson(res);
-    if (!data?.accessToken) throw new Error("Missing accessToken from server");
+    if (!res.ok)
+      throw new Error(data?.message || data?.error || "Login failed");
 
     setAccessToken(data.accessToken);
     await loadMe();
   }
 
-  async function register(email, password, workspaceName) {
+  async function register(email, password, workspaceName, fullName) {
     const res = await apiFetch("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ email, password, workspaceName }),
+      body: JSON.stringify({ email, password, workspaceName, fullName }),
     });
 
-    if (!res.ok) {
-      const data = await safeJson(res.clone());
-      throw new Error(data?.error || data?.message || "Register failed");
-    }
-
     const data = await safeJson(res);
-    if (!data?.accessToken) throw new Error("Missing accessToken from server");
+    if (!res.ok)
+      throw new Error(data?.message || data?.error || "Register failed");
 
     setAccessToken(data.accessToken);
     await loadMe();
@@ -73,51 +64,24 @@ export function AuthProvider({ children }) {
     } finally {
       clearAccessToken();
       setUser(null);
-      // mos e detyro reload, ProtectedRoute do e çojë vetë te /login
+      window.location.href = "/login";
     }
   }
 
-  async function updateProfile(payload) {
-    const res = await apiFetch("/users/me", {
-      method: "PATCH",
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const data = await safeJson(res.clone());
-      throw new Error(data?.error || data?.message || "Update failed");
-    }
-
-    const data = await safeJson(res);
-    const u = data?.user || null;
-    setUser(u);
-    return u;
-  }
-
-  // ✅ Bootstrap session on app start (pas refresh)
-  // Mos kontrollo getAccessToken() sepse humbet pas refresh (RAM).
-  // Lëre apiFetch të bëjë refresh me cookie nëse ekziston.
   useEffect(() => {
     (async () => {
       try {
-        await loadMe();
+        if (getAccessToken()) {
+          await loadMe();
+        }
       } finally {
         setLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const value = useMemo(
-    () => ({
-      user,
-      loading,
-      login,
-      register,
-      logout,
-      updateProfile,
-      loadMe,
-    }),
+    () => ({ user, loading, login, register, logout, loadMe }),
     [user, loading]
   );
 

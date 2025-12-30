@@ -1,109 +1,69 @@
-import User from "../models/User.js";
+// server/src/controllers/users.controller.js
 import bcrypt from "bcryptjs";
+import User from "../models/User.js";
 
-// GET all users (tenant scoped)
-export const getUsers = async (req, res) => {
-  try {
-    const users = await User.find({ tenantId: req.user.tenantId }).select(
-      "-password"
-    );
-
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ message: "Failed to fetch users" });
-  }
-};
-
-// CREATE user
-export const createUser = async (req, res) => {
-  try {
-    const { email, password, role, fullName } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email & password required" });
-    }
-
-    const exists = await User.findOne({
-      email,
-      tenantId: req.user.tenantId,
-    });
-
-    if (exists) {
-      return res.status(400).json({ message: "Email already exists" });
-    }
-
-    const hashed = await bcrypt.hash(password, 10);
-
-    const user = await User.create({
-      email,
-      password: hashed,
-      role,
-      fullName,
-      tenantId: req.user.tenantId,
-    });
-
-    res.status(201).json(user);
-  } catch (err) {
-    res.status(500).json({ message: "Create failed" });
-  }
-};
-
-// UPDATE user
-export const updateUser = async (req, res) => {
-  try {
-    const user = await User.findOneAndUpdate(
-      { _id: req.params.id, tenantId: req.user.tenantId },
-      req.body,
-      { new: true }
-    );
-
-    res.json(user);
-  } catch {
-    res.status(500).json({ message: "Update failed" });
-  }
-};
-
-// GET /api/users/me
 export async function me(req, res) {
-  try {
-    const user = await User.findById(req.user.id).select("-passwordHash");
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
-
-    return res.json({ user });
-  } catch (err) {
-    console.error("ME ERROR:", err);
-    return res.status(500).json({ message: "Server error" });
-  }
+  return res.json({ user: req.user });
 }
 
-// PATCH /api/users/me
 export async function updateMe(req, res) {
-  try {
-    const { fullName, avatarUrl } = req.body;
+  const { fullName, avatarUrl } = req.body || {};
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        fullName: fullName ?? req.user.fullName,
+        avatarUrl: avatarUrl ?? req.user.avatarUrl,
+      },
+    },
+    { new: true }
+  ).select("-passwordHash");
 
-    const updated = await User.findByIdAndUpdate(
-      req.user.id,
-      { fullName, avatarUrl },
-      { new: true }
-    ).select("-passwordHash");
-
-    return res.json({ user: updated });
-  } catch (err) {
-    console.error("UPDATE ME ERROR:", err);
-    return res.status(500).json({ message: "Server error" });
-  }
+  return res.json({ user });
 }
 
-// DELETE user
-export const deleteUser = async (req, res) => {
+export async function listUsers(req, res) {
+  const users = await User.find({ tenantId: req.user.tenantId })
+    .select("-passwordHash")
+    .sort({ createdAt: -1 });
+
+  return res.json({ users });
+}
+
+export async function createUser(req, res) {
   try {
-    await User.deleteOne({
-      _id: req.params.id,
+    // vetëm Owner/Admin
+    if (!["TenantOwner", "Admin"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const { email, password, fullName, role } = req.body || {};
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const created = await User.create({
       tenantId: req.user.tenantId,
+      email: normalizedEmail,
+      passwordHash,
+      fullName: fullName || "",
+      role: role || "User",
     });
 
-    res.json({ success: true });
-  } catch {
-    res.status(500).json({ message: "Delete failed" });
+    const safe = await User.findById(created._id).select("-passwordHash");
+    return res.status(201).json({ user: safe });
+  } catch (err) {
+    if (err?.code === 11000) {
+      return res
+        .status(400)
+        .json({ message: "Email already in use in this workspace" });
+    }
+    console.error("CREATE USER ERROR:", err);
+    return res.status(500).json({ message: "Server error" });
   }
-};
+}

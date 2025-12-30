@@ -1,33 +1,17 @@
+// server/src/models/User.js
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
   {
-    email: {
-      type: String,
-      required: true,
-      lowercase: true,
-      trim: true,
-    },
-
-    passwordHash: {
-      type: String,
-      required: true,
-    },
+    email: { type: String, required: true, trim: true, lowercase: true },
+    passwordHash: { type: String, required: true },
+    fullName: { type: String, default: "" },
+    avatarUrl: { type: String, default: "" },
 
     role: {
       type: String,
-      enum: ["TenantOwner", "Admin", "Member"],
-      default: "Member",
-    },
-
-    fullName: {
-      type: String,
-      default: "",
-    },
-
-    avatarUrl: {
-      type: String,
-      default: "",
+      enum: ["TenantOwner", "Admin", "User"],
+      default: "User",
     },
 
     tenantId: {
@@ -36,15 +20,10 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-/**
- * ✅ KJO ESHTË PJESA E RËNDËSISHME
- * Email është unik vetëm brenda tenant-it
- */
+// ✅ Email unik vetëm brenda tenant-it
 userSchema.index({ tenantId: 1, email: 1 }, { unique: true });
 
 export default mongoose.model("User", userSchema);

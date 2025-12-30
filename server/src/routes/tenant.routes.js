@@ -1,9 +1,10 @@
-import express from "express";
+import { Router } from "express";
+import requireAuth from "../middlewares/requireAuth.js";
 import { getMyTenant } from "../controllers/tenant.controller.js";
-import { requireAuth } from "../middlewares/auth.middleware.js";
 
-const router = express.Router();
+const router = Router();
 
+// GET /api/tenants/me
 router.get("/me", requireAuth, getMyTenant);
 
 export default router;

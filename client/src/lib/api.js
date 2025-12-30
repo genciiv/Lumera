@@ -1,10 +1,12 @@
-// ✅ Same-origin (Vite proxy do e çojë te :5000)
+// client/src/lib/api.js
 const API_URL = "/api";
 
-let accessToken = null;
+const TOKEN_KEY = "lumera_access_token";
+let accessToken = localStorage.getItem(TOKEN_KEY) || null;
 
 export function setAccessToken(token) {
   accessToken = token;
+  if (token) localStorage.setItem(TOKEN_KEY, token);
 }
 
 export function getAccessToken() {
@@ -13,22 +15,20 @@ export function getAccessToken() {
 
 export function clearAccessToken() {
   accessToken = null;
+  localStorage.removeItem(TOKEN_KEY);
 }
 
 async function refreshToken() {
   const res = await fetch(`${API_URL}/auth/refresh`, {
     method: "POST",
     credentials: "include",
-    headers: { "Cache-Control": "no-store" },
   });
 
   if (!res.ok) throw new Error("Refresh failed");
 
-  const data = await res.json().catch(() => null);
-  if (!data?.accessToken) throw new Error("No accessToken");
-
-  accessToken = data.accessToken;
-  return accessToken;
+  const data = await res.json();
+  setAccessToken(data.accessToken);
+  return data.accessToken;
 }
 
 export async function apiFetch(url, options = {}) {
@@ -49,8 +49,7 @@ export async function apiFetch(url, options = {}) {
     credentials: "include",
   });
 
-  // ✅ vetëm kur s'është refresh endpoint
-  if (res.status === 401 && url !== "/auth/refresh") {
+  if (res.status === 401) {
     try {
       await refreshToken();
 
@@ -64,8 +63,7 @@ export async function apiFetch(url, options = {}) {
       });
     } catch {
       clearAccessToken();
-      // mos e shpërnda gabimin në loop; lëre caller ta trajtojë
-      throw new Error("Session expired");
+      return res; // mos e hidhe error gjithmone, le ta trajtoje UI
     }
   }
 

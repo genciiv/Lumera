@@ -1,132 +1,164 @@
-import { useEffect, useState } from "react";
-import { apiFetch } from "../../lib/api";
+// client/src/pages/dashboard/Users.jsx
+import { useEffect, useMemo, useState } from "react";
+import { apiFetch } from "../../lib/api.js";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function Users() {
-  const [users, setUsers] = useState([]);
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-    role: "User",
-    fullName: "",
-  });
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const { user, loading } = useAuth();
 
-  // Load users
-  const loadUsers = async () => {
-    try {
-      const res = await apiFetch("/users");
-      const data = await res.json();
-      setUsers(data);
-    } catch {
-      setError("Failed to load users");
+  const [users, setUsers] = useState([]);
+  const [err, setErr] = useState("");
+
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("User");
+
+  const canManage = useMemo(() => {
+    return user?.role === "TenantOwner" || user?.role === "Admin";
+  }, [user]);
+
+  async function loadUsers() {
+    setErr("");
+    const res = await apiFetch("/users");
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      setUsers([]);
+      setErr(data?.message || "Failed to load users");
+      return;
     }
-  };
+    const data = await res.json().catch(() => null);
+    setUsers(Array.isArray(data?.users) ? data.users : []);
+  }
+
+  async function handleCreate(e) {
+    e.preventDefault();
+    setErr("");
+
+    const res = await apiFetch("/users", {
+      method: "POST",
+      body: JSON.stringify({ fullName, email, password, role }),
+    });
+
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      setErr(data?.message || "Create failed");
+      return;
+    }
+
+    setFullName("");
+    setEmail("");
+    setPassword("");
+    setRole("User");
+
+    await loadUsers();
+  }
 
   useEffect(() => {
+    if (loading) return;
+    if (!user) return; // nuk je loguar
     loadUsers();
-  }, []);
+  }, [loading, user]);
 
-  // Create user
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+  if (loading) return <div style={{ padding: 24 }}>Loading...</div>;
 
-    try {
-      const res = await apiFetch("/users", {
-        method: "POST",
-        body: JSON.stringify(form),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Create failed");
-      }
-
-      setForm({
-        email: "",
-        password: "",
-        role: "User",
-        fullName: "",
-      });
-
-      loadUsers();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (!user) {
+    return (
+      <div style={{ padding: 24 }}>
+        <h2>Unauthorized</h2>
+        <p>Duhet të logohesh.</p>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ maxWidth: 900 }}>
+    <div style={{ padding: 24 }}>
       <h2>Users</h2>
-      <p style={{ color: "#666" }}>
-        Manage users inside your tenant (Owner / Admin)
+      <p style={{ opacity: 0.8 }}>
+        Manage users inside your tenant (Owner/Admin).
       </p>
 
-      {error && (
-        <div style={{ background: "#fee", padding: 10, borderRadius: 8 }}>
-          {error}
+      {err ? (
+        <div
+          style={{
+            background: "#ffd9d9",
+            padding: 12,
+            borderRadius: 8,
+            margin: "12px 0",
+          }}
+        >
+          {err}
+        </div>
+      ) : null}
+
+      {canManage ? (
+        <div
+          style={{
+            background: "#fff",
+            padding: 16,
+            borderRadius: 12,
+            marginTop: 12,
+          }}
+        >
+          <h3>Create user</h3>
+
+          <form
+            onSubmit={handleCreate}
+            style={{ display: "grid", gap: 10, maxWidth: 420 }}
+          >
+            <input
+              placeholder="Full name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
+            <input
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <input
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+            />
+
+            <select value={role} onChange={(e) => setRole(e.target.value)}>
+              <option value="User">User</option>
+              <option value="Admin">Admin</option>
+              <option value="TenantOwner">TenantOwner</option>
+            </select>
+
+            <button type="submit">Create</button>
+          </form>
+        </div>
+      ) : (
+        <div style={{ marginTop: 12, opacity: 0.8 }}>
+          Vetëm Owner/Admin mund të krijojë user.
         </div>
       )}
 
-      {/* CREATE USER */}
-      <div className="card" style={{ marginTop: 20 }}>
-        <h3>Create user</h3>
-
-        <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
-          <input
-            placeholder="Full name"
-            value={form.fullName}
-            onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-          />
-
-          <input
-            placeholder="Email"
-            type="email"
-            required
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-          />
-
-          <input
-            placeholder="Password"
-            type="password"
-            required
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-          />
-
-          <select
-            value={form.role}
-            onChange={(e) => setForm({ ...form, role: e.target.value })}
-          >
-            <option value="User">User</option>
-            <option value="Admin">Admin</option>
-            <option value="TenantOwner">TenantOwner</option>
-          </select>
-
-          <button disabled={loading}>
-            {loading ? "Creating..." : "Create"}
-          </button>
-        </form>
-      </div>
-
-      {/* USERS LIST */}
-      <div className="card" style={{ marginTop: 30 }}>
+      <div
+        style={{
+          background: "#fff",
+          padding: 16,
+          borderRadius: 12,
+          marginTop: 16,
+        }}
+      >
         <h3>All users</h3>
 
         {users.length === 0 ? (
-          <p>No users found.</p>
+          <div style={{ opacity: 0.8 }}>No users found.</div>
         ) : (
-          <table width="100%">
+          <table
+            style={{ width: "100%", borderCollapse: "collapse", marginTop: 10 }}
+          >
             <thead>
               <tr>
-                <th>Email</th>
-                <th>Full name</th>
-                <th>Role</th>
+                <th align="left">Email</th>
+                <th align="left">Full name</th>
+                <th align="left">Role</th>
               </tr>
             </thead>
             <tbody>
