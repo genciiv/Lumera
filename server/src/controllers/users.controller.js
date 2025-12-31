@@ -2,10 +2,15 @@
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 
+function isOwnerOrAdmin(req) {
+  const role = req.user?.role;
+  return role === "TenantOwner" || role === "Admin";
+}
+
 // GET /api/users/me
 export async function me(req, res) {
   try {
-    const userId = req.user?.sub || req.user?._id;
+    const userId = req.user?.id || req.user?.sub; // varet si e ke requireAuth
     const user = await User.findById(userId).select("-passwordHash");
     if (!user) return res.status(404).json({ message: "User not found" });
     return res.json({ user });
@@ -18,15 +23,16 @@ export async function me(req, res) {
 // PATCH /api/users/me
 export async function updateMe(req, res) {
   try {
-    const userId = req.user?.sub || req.user?._id;
-    const { fullName, avatarUrl } = req.body || {};
+    const userId = req.user?.id || req.user?.sub;
+    const { fullName, avatarUrl } = req.body;
 
     const user = await User.findByIdAndUpdate(
       userId,
-      { $set: { fullName: fullName || "", avatarUrl: avatarUrl || "" } },
+      { $set: { fullName: fullName ?? "", avatarUrl: avatarUrl ?? "" } },
       { new: true }
     ).select("-passwordHash");
 
+    if (!user) return res.status(404).json({ message: "User not found" });
     return res.json({ user });
   } catch (err) {
     console.error("UPDATE ME ERROR:", err);
@@ -34,9 +40,13 @@ export async function updateMe(req, res) {
   }
 }
 
-// GET /api/users  (Owner/Admin only) - list users in same tenant
-export async function listUsers(req, res) {
+// GET /api/users  (Owner/Admin)
+export async function getUsers(req, res) {
   try {
+    if (!isOwnerOrAdmin(req)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
     const tenantId = req.user?.tenantId;
     if (!tenantId) return res.status(401).json({ message: "Unauthorized" });
 
@@ -46,18 +56,22 @@ export async function listUsers(req, res) {
 
     return res.json({ users });
   } catch (err) {
-    console.error("LIST USERS ERROR:", err);
+    console.error("GET USERS ERROR:", err);
     return res.status(500).json({ message: "Server error" });
   }
 }
 
-// POST /api/users  (Owner/Admin only) - create user in same tenant
+// POST /api/users  (Owner/Admin) - krijon user brenda tenant-it
 export async function createUser(req, res) {
   try {
+    if (!isOwnerOrAdmin(req)) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
     const tenantId = req.user?.tenantId;
     if (!tenantId) return res.status(401).json({ message: "Unauthorized" });
 
-    const { email, password, fullName, role } = req.body || {};
+    const { email, password, fullName, role } = req.body;
 
     if (!email || !password) {
       return res
@@ -65,38 +79,23 @@ export async function createUser(req, res) {
         .json({ message: "email and password are required" });
     }
 
-    const normalizedEmail = String(email).trim().toLowerCase();
-    const safeRole =
-      role === "Admin"
-        ? "Admin"
-        : role === "TenantOwner"
-        ? "TenantOwner"
-        : "User";
-
-    // Owner-only: mos lejo krijimin e TenantOwner nga admin/user
-    if (safeRole === "TenantOwner" && req.user.role !== "TenantOwner") {
-      return res
-        .status(403)
-        .json({ message: "Only TenantOwner can create another TenantOwner" });
-    }
-
-    const existing = await User.findOne({ tenantId, email: normalizedEmail });
-    if (existing)
-      return res.status(400).json({ message: "Email already in use" });
+    const allowedRoles = ["TenantOwner", "Admin", "User"];
+    const finalRole = allowedRoles.includes(role) ? role : "User";
 
     const passwordHash = await bcrypt.hash(password, 10);
 
     const created = await User.create({
       tenantId,
-      email: normalizedEmail,
+      email: email.toLowerCase().trim(),
       passwordHash,
       fullName: fullName || "",
-      role: safeRole,
+      role: finalRole,
     });
 
     const user = await User.findById(created._id).select("-passwordHash");
     return res.status(201).json({ user });
   } catch (err) {
+    // Duplicate key (tenantId+email unique)
     if (err?.code === 11000) {
       return res.status(400).json({ message: "Email already in use" });
     }
@@ -105,35 +104,60 @@ export async function createUser(req, res) {
   }
 }
 
-// DELETE /api/users/:id  (Owner/Admin only) - delete user in same tenant
-export async function deleteUser(req, res) {
+// PATCH /api/users/:id  (Owner/Admin)
+export async function updateUser(req, res) {
   try {
-    const tenantId = req.user?.tenantId;
-    if (!tenantId) return res.status(401).json({ message: "Unauthorized" });
-
-    const targetId = req.params.id;
-    const target = await User.findById(targetId);
-    if (!target) return res.status(404).json({ message: "User not found" });
-
-    // vetëm brenda tenant-it
-    if (String(target.tenantId) !== String(tenantId)) {
+    if (!isOwnerOrAdmin(req)) {
       return res.status(403).json({ message: "Forbidden" });
     }
 
-    // mos lejo fshirjen e TenantOwner nga Admin/User
-    if (target.role === "TenantOwner" && req.user.role !== "TenantOwner") {
-      return res
-        .status(403)
-        .json({ message: "Only TenantOwner can delete TenantOwner" });
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) return res.status(401).json({ message: "Unauthorized" });
+
+    const { id } = req.params;
+    const { fullName, avatarUrl, role } = req.body;
+
+    const allowedRoles = ["TenantOwner", "Admin", "User"];
+    const update = {};
+    if (fullName !== undefined) update.fullName = fullName;
+    if (avatarUrl !== undefined) update.avatarUrl = avatarUrl;
+    if (role !== undefined && allowedRoles.includes(role)) update.role = role;
+
+    const user = await User.findOneAndUpdate(
+      { _id: id, tenantId }, // ✅ tenant scoped
+      { $set: update },
+      { new: true }
+    ).select("-passwordHash");
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+    return res.json({ user });
+  } catch (err) {
+    console.error("UPDATE USER ERROR:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+}
+
+// DELETE /api/users/:id  (Owner/Admin)
+export async function deleteUser(req, res) {
+  try {
+    if (!isOwnerOrAdmin(req)) {
+      return res.status(403).json({ message: "Forbidden" });
     }
 
-    // mos lejo user të fshij veten pa dashje
-    const myId = req.user?.sub || req.user?._id;
-    if (String(target._id) === String(myId)) {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) return res.status(401).json({ message: "Unauthorized" });
+
+    const { id } = req.params;
+
+    // Mos lejo të fshijë veten (opsionale)
+    const meId = req.user?.id || req.user?.sub;
+    if (String(meId) === String(id)) {
       return res.status(400).json({ message: "You cannot delete yourself" });
     }
 
-    await User.deleteOne({ _id: targetId });
+    const deleted = await User.findOneAndDelete({ _id: id, tenantId });
+    if (!deleted) return res.status(404).json({ message: "User not found" });
+
     return res.json({ ok: true });
   } catch (err) {
     console.error("DELETE USER ERROR:", err);
