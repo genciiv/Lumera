@@ -6,7 +6,7 @@ export default function AppLayout() {
 
   const isOwner = user?.role === "TenantOwner";
   const isAdmin = user?.role === "Admin";
-  const canManageUsers = isOwner || isAdmin;
+  const canManage = isOwner || isAdmin;
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
@@ -17,6 +17,8 @@ export default function AppLayout() {
           padding: 16,
           borderRight: "1px solid var(--border)",
           background: "white",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
         <div style={{ fontWeight: 900, marginBottom: 10 }}>LUMERA</div>
@@ -26,21 +28,27 @@ export default function AppLayout() {
         </div>
 
         <nav style={{ display: "grid", gap: 10 }}>
-          <NavLink to="/app" style={linkStyle}>
+          <NavLink to="/app" style={linkStyle} end>
             Dashboard
           </NavLink>
 
-          {canManageUsers ? (
+          {canManage && (
             <NavLink to="/app/users" style={linkStyle}>
               Users
             </NavLink>
-          ) : null}
+          )}
 
-          {isOwner ? (
+          {canManage && (
+            <NavLink to="/app/invites" style={linkStyle}>
+              Invites
+            </NavLink>
+          )}
+
+          {isOwner && (
             <NavLink to="/app/settings" style={linkStyle}>
               Settings
             </NavLink>
-          ) : null}
+          )}
         </nav>
 
         <div style={{ marginTop: "auto", paddingTop: 16 }}>
@@ -61,8 +69,8 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      {/* Main */}
-      <main style={{ flex: 1, padding: 24, background: "var(--bg)" }}>
+      {/* Main content */}
+      <main style={{ flex: 1, padding: 24 }}>
         <Outlet />
       </main>
     </div>

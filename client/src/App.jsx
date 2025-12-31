@@ -10,8 +10,9 @@ import Register from "./pages/auth/Register.jsx";
 import AcceptInvite from "./pages/auth/AcceptInvite.jsx";
 
 import Dashboard from "./pages/dashboard/Dashboard.jsx";
-import Settings from "./pages/dashboard/Settings.jsx";
 import Users from "./pages/dashboard/Users.jsx";
+import Settings from "./pages/dashboard/Settings.jsx";
+import Invites from "./pages/dashboard/Invites.jsx";
 
 import NotFound from "./pages/NotFound.jsx";
 
@@ -19,7 +20,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* ================= AUTH PAGES ================= */}
+        {/* AUTH */}
         <Route element={<AuthLayout />}>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
@@ -27,23 +28,11 @@ export default function App() {
           <Route path="/accept-invite" element={<AcceptInvite />} />
         </Route>
 
-        {/* ================= PROTECTED APP ================= */}
+        {/* APP */}
         <Route element={<ProtectedRoute />}>
           <Route path="/app" element={<AppLayout />}>
-            {/* Everyone logged-in */}
             <Route index element={<Dashboard />} />
 
-            {/* Owner only */}
-            <Route
-              path="settings"
-              element={
-                <RequireRole roles={["TenantOwner"]}>
-                  <Settings />
-                </RequireRole>
-              }
-            />
-
-            {/* Owner + Admin */}
             <Route
               path="users"
               element={
@@ -52,10 +41,27 @@ export default function App() {
                 </RequireRole>
               }
             />
+
+            <Route
+              path="invites"
+              element={
+                <RequireRole roles={["TenantOwner", "Admin"]}>
+                  <Invites />
+                </RequireRole>
+              }
+            />
+
+            <Route
+              path="settings"
+              element={
+                <RequireRole roles={["TenantOwner"]}>
+                  <Settings />
+                </RequireRole>
+              }
+            />
           </Route>
         </Route>
 
-        {/* ================= 404 ================= */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
