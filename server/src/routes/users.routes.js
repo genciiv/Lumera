@@ -1,6 +1,6 @@
-// server/src/routes/users.routes.js
 import { Router } from "express";
 import requireAuth from "../middlewares/requireAuth.js";
+import requireRole from "../middlewares/requireRole.js";
 import {
   me,
   updateMe,
@@ -15,9 +15,23 @@ const router = Router();
 router.get("/users/me", requireAuth, me);
 router.patch("/users/me", requireAuth, updateMe);
 
-// users CRUD (tenant scope)
-router.get("/users", requireAuth, listUsers);
-router.post("/users", requireAuth, createUser);
-router.delete("/users/:id", requireAuth, deleteUser);
+// users (Owner/Admin)
+router.get(
+  "/users",
+  requireAuth,
+  requireRole("TenantOwner", "Admin"),
+  listUsers
+);
+
+// create (Owner only)
+router.post("/users", requireAuth, requireRole("TenantOwner"), createUser);
+
+// delete (Owner/Admin)
+router.delete(
+  "/users/:id",
+  requireAuth,
+  requireRole("TenantOwner", "Admin"),
+  deleteUser
+);
 
 export default router;
