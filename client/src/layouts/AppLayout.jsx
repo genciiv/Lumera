@@ -1,84 +1,79 @@
-import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
-const linkStyle = ({ isActive }) => ({
-  padding: "10px 12px",
-  borderRadius: 12,
-  display: "block",
-  background: isActive ? "rgba(59, 130, 246, 0.12)" : "transparent",
-  color: isActive ? "var(--text)" : "var(--muted)",
-  fontWeight: isActive ? 600 : 500,
-});
-
 export default function AppLayout() {
-  const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const canSeeUsers = ["TenantOwner", "Admin"].includes(user?.role);
-
-  async function onLogout() {
-    await logout();
-    navigate("/login", { replace: true });
-  }
+  const isOwner = user?.role === "TenantOwner";
+  const isAdmin = user?.role === "Admin";
+  const canManageUsers = isOwner || isAdmin;
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "260px 1fr",
-        minHeight: "100vh",
-      }}
-    >
+    <div style={{ display: "flex", minHeight: "100vh" }}>
+      {/* Sidebar */}
       <aside
         style={{
-          padding: 18,
+          width: 260,
+          padding: 16,
           borderRight: "1px solid var(--border)",
-          background: "var(--surface)",
-          display: "grid",
-          gridTemplateRows: "auto 1fr auto",
-          gap: 12,
+          background: "white",
         }}
       >
-        <div>
-          <div style={{ fontWeight: 800, fontSize: 18 }}>LUMERA</div>
-          <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 6 }}>
-            {user?.email || "—"} · {user?.role || "—"}
-          </div>
+        <div style={{ fontWeight: 900, marginBottom: 10 }}>LUMERA</div>
+
+        <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>
+          {user?.email} · {user?.role}
         </div>
 
-        <nav style={{ display: "grid", gap: 8 }}>
-          <NavLink to="/app" end style={linkStyle}>
+        <nav style={{ display: "grid", gap: 10 }}>
+          <NavLink to="/app" style={linkStyle}>
             Dashboard
           </NavLink>
 
-          {canSeeUsers && (
+          {canManageUsers ? (
             <NavLink to="/app/users" style={linkStyle}>
               Users
             </NavLink>
-          )}
+          ) : null}
 
-          <NavLink to="/app/settings" style={linkStyle}>
-            Settings
-          </NavLink>
+          {isOwner ? (
+            <NavLink to="/app/settings" style={linkStyle}>
+              Settings
+            </NavLink>
+          ) : null}
         </nav>
 
-        <button onClick={onLogout} style={logoutBtn}>
-          Logout
-        </button>
+        <div style={{ marginTop: "auto", paddingTop: 16 }}>
+          <button
+            onClick={logout}
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 12,
+              border: "1px solid var(--border)",
+              background: "white",
+              cursor: "pointer",
+              fontWeight: 800,
+            }}
+          >
+            Logout
+          </button>
+        </div>
       </aside>
 
-      <main style={{ padding: 32 }}>
+      {/* Main */}
+      <main style={{ flex: 1, padding: 24, background: "var(--bg)" }}>
         <Outlet />
       </main>
     </div>
   );
 }
 
-const logoutBtn = {
+const linkStyle = ({ isActive }) => ({
   padding: "10px 12px",
   borderRadius: 12,
-  border: "1px solid var(--border)",
-  background: "white",
-  cursor: "pointer",
-  fontWeight: 700,
-};
+  textDecoration: "none",
+  fontWeight: 800,
+  color: isActive ? "white" : "black",
+  background: isActive ? "var(--primary)" : "transparent",
+});
