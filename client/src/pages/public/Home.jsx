@@ -1,6 +1,16 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 
 export default function Home() {
+  const [email, setEmail] = useState("");
+
+  function onNewsletter(e) {
+    e.preventDefault();
+    if (!email.trim()) return alert("Shkruaj email-in.");
+    alert("✅ Subscribed! (later: connect to backend)");
+    setEmail("");
+  }
+
   return (
     <div style={{ display: "grid", gap: 18 }}>
       {/* HERO */}
@@ -17,13 +27,27 @@ export default function Home() {
             management, and invite flows — ready to grow with modules.
           </p>
 
-          <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              marginTop: 16,
+              flexWrap: "wrap",
+            }}
+          >
             <Link to="/register" style={primaryBtn}>
               Get Started
             </Link>
-            <Link to="/services" style={ghostBtn}>
-              View Services
+            <Link to="/pricing" style={ghostBtn}>
+              View Pricing
             </Link>
+            <Link to="/contact" style={ghostBtn}>
+              Book a demo
+            </Link>
+          </div>
+
+          <div style={{ marginTop: 14, color: "var(--muted)", fontSize: 13 }}>
+            No Tailwind. Clean CSS variables. Ready for production deploy.
           </div>
         </div>
 
@@ -42,24 +66,45 @@ export default function Home() {
             <li>Invites: create + accept</li>
             <li>Settings: profile + workspace</li>
           </ul>
+
+          <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
+            <div style={miniStat}>
+              <div style={{ fontWeight: 900 }}>Secure</div>
+              <div style={{ color: "var(--muted)", fontSize: 13 }}>
+                Access tokens + refresh cookies
+              </div>
+            </div>
+            <div style={miniStat}>
+              <div style={{ fontWeight: 900 }}>Tenant-scoped</div>
+              <div style={{ color: "var(--muted)", fontSize: 13 }}>
+                Separate workspaces, safe data
+              </div>
+            </div>
+            <div style={miniStat}>
+              <div style={{ fontWeight: 900 }}>Role-based</div>
+              <div style={{ color: "var(--muted)", fontSize: 13 }}>
+                Owner/Admin/User permissions
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* FEATURES */}
-      <section style={grid}>
-        <Card
+      <section style={grid2}>
+        <Feature
           title="Secure Auth"
           text="JWT access + refresh cookies, protected routes, session persist."
         />
-        <Card
+        <Feature
           title="Teams & Roles"
           text="Owner/Admin/User roles with tenant-scoped permissions."
         />
-        <Card
+        <Feature
           title="User Management"
           text="Create, edit, delete users inside a workspace."
         />
-        <Card
+        <Feature
           title="Invites"
           text="Generate invite links so users can join safely."
         />
@@ -67,14 +112,7 @@ export default function Home() {
 
       {/* PRICING PREVIEW */}
       <section style={{ display: "grid", gap: 12 }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "end",
-            gap: 10,
-          }}
-        >
+        <div style={sectionHeader}>
           <div>
             <h2 style={{ margin: 0 }}>Pricing</h2>
             <div style={{ color: "var(--muted)", marginTop: 6 }}>
@@ -97,12 +135,7 @@ export default function Home() {
             </div>
             <Link
               to="/register"
-              style={{
-                ...primaryBtn,
-                display: "inline-block",
-                marginTop: 12,
-                textDecoration: "none",
-              }}
+              style={{ ...primaryBtn, display: "inline-block", marginTop: 12 }}
             >
               Start free
             </Link>
@@ -121,12 +154,7 @@ export default function Home() {
             </div>
             <Link
               to="/register"
-              style={{
-                ...primaryBtn,
-                display: "inline-block",
-                marginTop: 12,
-                textDecoration: "none",
-              }}
+              style={{ ...primaryBtn, display: "inline-block", marginTop: 12 }}
             >
               Start now
             </Link>
@@ -142,17 +170,97 @@ export default function Home() {
             </div>
             <Link
               to="/contact"
-              style={{
-                ...ghostBtn,
-                display: "inline-block",
-                marginTop: 12,
-                textDecoration: "none",
-              }}
+              style={{ ...ghostBtn, display: "inline-block", marginTop: 12 }}
             >
               Contact us
             </Link>
           </div>
         </div>
+      </section>
+
+      {/* TESTIMONIALS */}
+      <section style={{ display: "grid", gap: 12 }}>
+        <div style={sectionHeader}>
+          <div>
+            <h2 style={{ margin: 0 }}>What teams say</h2>
+            <div style={{ color: "var(--muted)", marginTop: 6 }}>
+              Lightweight, fast, and clean UX.
+            </div>
+          </div>
+        </div>
+
+        <div style={grid3}>
+          <Testimonial
+            quote="We launched a workspace in minutes. Roles and invites work exactly as expected."
+            name="Ardit"
+            role="Team Lead"
+          />
+          <Testimonial
+            quote="Finally a clean dashboard without heavy UI frameworks. It feels fast and simple."
+            name="Elira"
+            role="Product"
+          />
+          <Testimonial
+            quote="Multi-tenant + auth + user management is a solid base. Ready to add modules."
+            name="Bledi"
+            role="Engineer"
+          />
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section style={{ display: "grid", gap: 12 }}>
+        <div style={sectionHeader}>
+          <div>
+            <h2 style={{ margin: 0 }}>FAQ</h2>
+            <div style={{ color: "var(--muted)", marginTop: 6 }}>
+              Quick answers before you start.
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gap: 10 }}>
+          <Faq
+            q="Is this a real SaaS base or just a template?"
+            a="It’s a real SaaS base: multi-tenant, roles, protected routes, users CRUD, invites, settings."
+          />
+          <Faq
+            q="Can I deploy it with custom domain?"
+            a="Yes. Frontend on Vercel/Netlify + Backend on Render/Railway/VPS + custom domain + SSL."
+          />
+          <Faq
+            q="Do I need Tailwind?"
+            a="No. This project uses clean CSS variables + inline styles, easy on the eyes."
+          />
+          <Faq
+            q="When will payments be added?"
+            a="When you’re ready: Stripe billing (plans, limits, subscriptions) is a next module."
+          />
+        </div>
+      </section>
+
+      {/* NEWSLETTER */}
+      <section className="card" style={newsletterBox}>
+        <div>
+          <div style={{ fontWeight: 900, fontSize: 18 }}>
+            Get product updates
+          </div>
+          <div style={{ color: "var(--muted)", marginTop: 6 }}>
+            Subscribe for new modules (blog, billing, analytics).
+          </div>
+        </div>
+
+        <form onSubmit={onNewsletter} style={newsletterForm}>
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@mail.com"
+            style={newsletterInput}
+          />
+          <button type="submit" style={primaryBtn}>
+            Subscribe
+          </button>
+        </form>
       </section>
 
       {/* CTA */}
@@ -163,14 +271,11 @@ export default function Home() {
             Create your workspace and invite your team in minutes.
           </div>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-          <Link
-            to="/register"
-            style={{ ...primaryBtn, textDecoration: "none" }}
-          >
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <Link to="/register" style={primaryBtn}>
             Get started
           </Link>
-          <Link to="/contact" style={{ ...ghostBtn, textDecoration: "none" }}>
+          <Link to="/contact" style={ghostBtn}>
             Book a demo
           </Link>
         </div>
@@ -179,7 +284,7 @@ export default function Home() {
   );
 }
 
-function Card({ title, text }) {
+function Feature({ title, text }) {
   return (
     <div className="card" style={{ padding: 18 }}>
       <div style={{ fontWeight: 900 }}>{title}</div>
@@ -188,9 +293,31 @@ function Card({ title, text }) {
   );
 }
 
+function Testimonial({ quote, name, role }) {
+  return (
+    <div className="card" style={{ padding: 18 }}>
+      <div style={{ color: "var(--text)", fontWeight: 800, lineHeight: 1.4 }}>
+        “{quote}”
+      </div>
+      <div style={{ marginTop: 12, color: "var(--muted)", fontSize: 13 }}>
+        <b style={{ color: "var(--text)" }}>{name}</b> · {role}
+      </div>
+    </div>
+  );
+}
+
+function Faq({ q, a }) {
+  return (
+    <details className="card" style={{ padding: 16 }}>
+      <summary style={{ cursor: "pointer", fontWeight: 900 }}>{q}</summary>
+      <div style={{ marginTop: 10, color: "var(--muted)" }}>{a}</div>
+    </details>
+  );
+}
+
 const hero = {
   display: "grid",
-  gridTemplateColumns: "1.3fr 1fr",
+  gridTemplateColumns: "1.25fr 1fr",
   gap: 18,
   alignItems: "stretch",
 };
@@ -212,10 +339,30 @@ const mockCard = {
   padding: 18,
 };
 
-const grid = {
+const miniStat = {
+  padding: 12,
+  borderRadius: 14,
+  border: "1px solid var(--border)",
+  background: "rgba(37,99,235,0.05)",
+};
+
+const grid2 = {
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: 12,
+};
+
+const grid3 = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: 12,
+};
+
+const sectionHeader = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "end",
+  gap: 10,
 };
 
 const pricingGrid = {
@@ -224,13 +371,37 @@ const pricingGrid = {
   gap: 12,
 };
 
-const homeCTA = {
-  marginTop: 6,
+const newsletterBox = {
   padding: 18,
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
   gap: 12,
+  flexWrap: "wrap",
+};
+
+const newsletterForm = {
+  display: "flex",
+  gap: 10,
+  alignItems: "center",
+  flexWrap: "wrap",
+};
+
+const newsletterInput = {
+  width: 260,
+  padding: "10px 12px",
+  borderRadius: 12,
+  border: "1px solid var(--border)",
+  outline: "none",
+};
+
+const homeCTA = {
+  padding: 18,
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 12,
+  flexWrap: "wrap",
 };
 
 const primaryBtn = {

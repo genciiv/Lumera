@@ -3,7 +3,7 @@ export default function Contact() {
     <div style={{ maxWidth: 720, display: "grid", gap: 12 }}>
       <h1 style={{ margin: 0 }}>Contact</h1>
       <p style={{ color: "var(--muted)" }}>
-        Simple contact form (backend email later).
+        Tell us what you need — we reply with a plan.
       </p>
 
       <form className="card" style={{ padding: 18, display: "grid", gap: 10 }}>
@@ -11,10 +11,21 @@ export default function Contact() {
           Name
           <input style={inputStyle} placeholder="Your name" />
         </label>
+
         <label>
           Email
           <input style={inputStyle} type="email" placeholder="you@mail.com" />
         </label>
+
+        <label>
+          Topic
+          <select style={inputStyle} defaultValue="demo">
+            <option value="demo">Book a demo</option>
+            <option value="custom">Custom plan</option>
+            <option value="support">Support</option>
+          </select>
+        </label>
+
         <label>
           Message
           <textarea
@@ -26,10 +37,14 @@ export default function Contact() {
         <button
           type="button"
           style={primaryBtn}
-          onClick={() => alert("Later we connect this to backend/email.")}
+          onClick={() => alert("✅ Sent! (later: connect to backend/email)")}
         >
           Send
         </button>
+
+        <div style={{ color: "var(--muted)", fontSize: 13 }}>
+          Later we connect this to backend (Nodemailer).
+        </div>
       </form>
     </div>
   );
@@ -42,6 +57,7 @@ const inputStyle = {
   borderRadius: 12,
   border: "1px solid var(--border)",
   outline: "none",
+  background: "white",
 };
 
 const primaryBtn = {
