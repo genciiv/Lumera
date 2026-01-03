@@ -11,6 +11,12 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  --bg: #f7f8fb;
+  --surface: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --border: rgba(17,24,39,0.12);
+  --primary: #2563eb;
 }
 
 a {
@@ -28,6 +34,8 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background: var(--bg); color: var(--text); font-family: system-ui, Arial; }
+.card { background: white; border: 1px solid var(--border); border-radius: 16px;
 }
 
 h1 {
