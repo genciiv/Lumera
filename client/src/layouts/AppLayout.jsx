@@ -1,3 +1,4 @@
+// client/src/layouts/AppLayout.jsx
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -6,7 +7,7 @@ export default function AppLayout() {
 
   const isOwner = user?.role === "TenantOwner";
   const isAdmin = user?.role === "Admin";
-  const canManage = isOwner || isAdmin;
+  const canManageUsers = isOwner || isAdmin;
 
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
@@ -17,8 +18,6 @@ export default function AppLayout() {
           padding: 16,
           borderRight: "1px solid var(--border)",
           background: "white",
-          display: "flex",
-          flexDirection: "column",
         }}
       >
         <div style={{ fontWeight: 900, marginBottom: 10 }}>LUMERA</div>
@@ -28,19 +27,25 @@ export default function AppLayout() {
         </div>
 
         <nav style={{ display: "grid", gap: 10 }}>
-          <NavLink to="/app" style={linkStyle} end>
+          <NavLink to="/app" style={linkStyle}>
             Dashboard
           </NavLink>
 
-          {canManage && (
+          {canManageUsers && (
             <NavLink to="/app/users" style={linkStyle}>
               Users
             </NavLink>
           )}
 
-          {canManage && (
+          {canManageUsers && (
             <NavLink to="/app/invites" style={linkStyle}>
               Invites
+            </NavLink>
+          )}
+
+          {canManageUsers && (
+            <NavLink to="/app/blog" style={linkStyle}>
+              Blog
             </NavLink>
           )}
 
@@ -69,8 +74,8 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      {/* Main content */}
-      <main style={{ flex: 1, padding: 24 }}>
+      {/* Main */}
+      <main style={{ flex: 1, padding: 24, background: "var(--bg)" }}>
         <Outlet />
       </main>
     </div>

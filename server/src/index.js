@@ -9,6 +9,7 @@ import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/users.routes.js";
 import tenantRoutes from "./routes/tenant.routes.js";
 import inviteRoutes from "./routes/invites.routes.js";
+import blogRoutes from "./routes/blog.routes.js";
 
 dotenv.config();
 
@@ -29,6 +30,7 @@ app.use("/api", authRoutes);
 app.use("/api", userRoutes);
 app.use("/api/tenants", tenantRoutes);
 app.use("/api", inviteRoutes);
+app.use("/api/blog", blogRoutes);
 
 const PORT = process.env.PORT || 5000;
 

@@ -22,6 +22,7 @@ import Dashboard from "./pages/dashboard/Dashboard.jsx";
 import Settings from "./pages/dashboard/Settings.jsx";
 import Users from "./pages/dashboard/Users.jsx";
 import Invites from "./pages/dashboard/Invites.jsx";
+import BlogAdmin from "./pages/dashboard/BlogAdmin.jsx";
 
 import NotFound from "./pages/NotFound.jsx";
 
@@ -29,7 +30,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* PUBLIC WEBSITE */}
+        {/* ================= PUBLIC WEBSITE ================= */}
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/services" element={<Services />} />
@@ -39,14 +40,14 @@ export default function App() {
           <Route path="/contact" element={<Contact />} />
         </Route>
 
-        {/* AUTH */}
+        {/* ================= AUTH ================= */}
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/accept-invite" element={<AcceptInvite />} />
         </Route>
 
-        {/* APP */}
+        {/* ================= PROTECTED APP ================= */}
         <Route element={<ProtectedRoute />}>
           <Route path="/app" element={<AppLayout />}>
             <Route index element={<Dashboard />} />
@@ -65,6 +66,15 @@ export default function App() {
               element={
                 <RequireRole roles={["TenantOwner", "Admin"]}>
                   <Invites />
+                </RequireRole>
+              }
+            />
+
+            <Route
+              path="blog"
+              element={
+                <RequireRole roles={["TenantOwner", "Admin"]}>
+                  <BlogAdmin />
                 </RequireRole>
               }
             />
