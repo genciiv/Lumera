@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 export default function Home() {
   return (
     <div style={{ display: "grid", gap: 18 }}>
+      {/* HERO */}
       <section style={hero}>
         <div style={{ maxWidth: 720 }}>
           <div style={badge}>Multi-tenant SaaS · MERN</div>
@@ -44,6 +45,7 @@ export default function Home() {
         </div>
       </section>
 
+      {/* FEATURES */}
       <section style={grid}>
         <Card
           title="Secure Auth"
@@ -61,6 +63,117 @@ export default function Home() {
           title="Invites"
           text="Generate invite links so users can join safely."
         />
+      </section>
+
+      {/* PRICING PREVIEW */}
+      <section style={{ display: "grid", gap: 12 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "end",
+            gap: 10,
+          }}
+        >
+          <div>
+            <h2 style={{ margin: 0 }}>Pricing</h2>
+            <div style={{ color: "var(--muted)", marginTop: 6 }}>
+              Start free. Upgrade when you need more users.
+            </div>
+          </div>
+          <Link to="/pricing" style={ghostBtn}>
+            View all plans
+          </Link>
+        </div>
+
+        <div style={pricingGrid}>
+          <div className="card" style={{ padding: 18 }}>
+            <div style={{ fontWeight: 900 }}>Starter</div>
+            <div style={{ fontSize: 24, fontWeight: 900, marginTop: 6 }}>
+              Free
+            </div>
+            <div style={{ color: "var(--muted)", marginTop: 6 }}>
+              For testing and small teams.
+            </div>
+            <Link
+              to="/register"
+              style={{
+                ...primaryBtn,
+                display: "inline-block",
+                marginTop: 12,
+                textDecoration: "none",
+              }}
+            >
+              Start free
+            </Link>
+          </div>
+
+          <div
+            className="card"
+            style={{ padding: 18, border: "2px solid var(--primary)" }}
+          >
+            <div style={{ fontWeight: 900 }}>Team</div>
+            <div style={{ fontSize: 24, fontWeight: 900, marginTop: 6 }}>
+              €19 / mo
+            </div>
+            <div style={{ color: "var(--muted)", marginTop: 6 }}>
+              Best value for real usage.
+            </div>
+            <Link
+              to="/register"
+              style={{
+                ...primaryBtn,
+                display: "inline-block",
+                marginTop: 12,
+                textDecoration: "none",
+              }}
+            >
+              Start now
+            </Link>
+          </div>
+
+          <div className="card" style={{ padding: 18 }}>
+            <div style={{ fontWeight: 900 }}>Business</div>
+            <div style={{ fontSize: 24, fontWeight: 900, marginTop: 6 }}>
+              €49 / mo
+            </div>
+            <div style={{ color: "var(--muted)", marginTop: 6 }}>
+              For bigger workspaces.
+            </div>
+            <Link
+              to="/contact"
+              style={{
+                ...ghostBtn,
+                display: "inline-block",
+                marginTop: 12,
+                textDecoration: "none",
+              }}
+            >
+              Contact us
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="card" style={homeCTA}>
+        <div>
+          <div style={{ fontWeight: 900, fontSize: 18 }}>Ready to launch?</div>
+          <div style={{ color: "var(--muted)", marginTop: 6 }}>
+            Create your workspace and invite your team in minutes.
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <Link
+            to="/register"
+            style={{ ...primaryBtn, textDecoration: "none" }}
+          >
+            Get started
+          </Link>
+          <Link to="/contact" style={{ ...ghostBtn, textDecoration: "none" }}>
+            Book a demo
+          </Link>
+        </div>
       </section>
     </div>
   );
@@ -102,6 +215,21 @@ const mockCard = {
 const grid = {
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 12,
+};
+
+const pricingGrid = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: 12,
+};
+
+const homeCTA = {
+  marginTop: 6,
+  padding: 18,
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
   gap: 12,
 };
 

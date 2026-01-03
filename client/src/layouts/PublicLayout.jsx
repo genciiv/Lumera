@@ -17,7 +17,7 @@ export default function PublicLayout() {
           position: "sticky",
           top: 0,
           zIndex: 10,
-          background: "rgba(255,255,255,0.9)",
+          background: "rgba(255,255,255,0.92)",
           backdropFilter: "blur(8px)",
           borderBottom: "1px solid var(--border)",
         }}
@@ -44,6 +44,9 @@ export default function PublicLayout() {
             <NavLink to="/services" style={linkStyle}>
               Services
             </NavLink>
+            <NavLink to="/pricing" style={linkStyle}>
+              Pricing
+            </NavLink>
             <NavLink to="/blog" style={linkStyle}>
               Blog
             </NavLink>
@@ -52,11 +55,9 @@ export default function PublicLayout() {
             </NavLink>
           </nav>
 
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            <NavLink to="/login" style={linkStyle}>
-              Login
-            </NavLink>
-          </div>
+          <NavLink to="/login" style={linkStyle}>
+            Login
+          </NavLink>
         </div>
       </header>
 

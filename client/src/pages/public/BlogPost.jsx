@@ -14,8 +14,7 @@ export default function BlogPost() {
       </h1>
 
       <div className="card" style={{ padding: 18, color: "var(--muted)" }}>
-        This is a placeholder post page. Later we will load content from MongoDB
-        (Blog module) and render HTML/Markdown safely.
+        Placeholder post page. Later we will load blog content from MongoDB.
       </div>
     </div>
   );

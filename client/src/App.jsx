@@ -9,6 +9,7 @@ import RequireRole from "./components/RequireRole.jsx";
 
 import Home from "./pages/public/Home.jsx";
 import Services from "./pages/public/Services.jsx";
+import Pricing from "./pages/public/Pricing.jsx";
 import Blog from "./pages/public/Blog.jsx";
 import BlogPost from "./pages/public/BlogPost.jsx";
 import Contact from "./pages/public/Contact.jsx";
@@ -28,23 +29,24 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* ========== PUBLIC WEBSITE ========== */}
+        {/* PUBLIC WEBSITE */}
         <Route element={<PublicLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/services" element={<Services />} />
+          <Route path="/pricing" element={<Pricing />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<BlogPost />} />
           <Route path="/contact" element={<Contact />} />
         </Route>
 
-        {/* ========== AUTH PAGES ========== */}
+        {/* AUTH */}
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/accept-invite" element={<AcceptInvite />} />
         </Route>
 
-        {/* ========== PROTECTED APP ========== */}
+        {/* APP */}
         <Route element={<ProtectedRoute />}>
           <Route path="/app" element={<AppLayout />}>
             <Route index element={<Dashboard />} />
