@@ -1,21 +1,16 @@
 // client/src/lib/api.js
-const API_URL = "/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
-const TOKEN_KEY = "lumera_access_token";
-let accessToken = localStorage.getItem(TOKEN_KEY) || null;
+let accessToken = null;
 
 export function setAccessToken(token) {
   accessToken = token;
-  if (token) localStorage.setItem(TOKEN_KEY, token);
 }
-
 export function getAccessToken() {
   return accessToken;
 }
-
 export function clearAccessToken() {
   accessToken = null;
-  localStorage.removeItem(TOKEN_KEY);
 }
 
 async function refreshToken() {
@@ -23,15 +18,14 @@ async function refreshToken() {
     method: "POST",
     credentials: "include",
   });
-
   if (!res.ok) throw new Error("Refresh failed");
 
   const data = await res.json();
-  setAccessToken(data.accessToken);
-  return data.accessToken;
+  accessToken = data.accessToken;
+  return accessToken;
 }
 
-export async function apiFetch(url, options = {}) {
+export async function apiFetch(path, options = {}) {
   const headers = new Headers(options.headers || {});
   headers.set("Cache-Control", "no-store");
 
@@ -39,33 +33,41 @@ export async function apiFetch(url, options = {}) {
     headers.set("Content-Type", "application/json");
   }
 
-  if (accessToken) {
-    headers.set("Authorization", `Bearer ${accessToken}`);
-  }
+  if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
 
-  const res = await fetch(`${API_URL}${url}`, {
+  const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers,
     credentials: "include",
   });
 
   if (res.status === 401) {
-    try {
-      await refreshToken();
+    await refreshToken();
 
-      const retryHeaders = new Headers(headers);
-      retryHeaders.set("Authorization", `Bearer ${accessToken}`);
+    const retryHeaders = new Headers(headers);
+    retryHeaders.set("Authorization", `Bearer ${accessToken}`);
 
-      return fetch(`${API_URL}${url}`, {
-        ...options,
-        headers: retryHeaders,
-        credentials: "include",
-      });
-    } catch {
-      clearAccessToken();
-      return res; // mos e hidhe error gjithmone, le ta trajtoje UI
-    }
+    return fetch(`${API_URL}${path}`, {
+      ...options,
+      headers: retryHeaders,
+      credentials: "include",
+    });
   }
 
   return res;
+}
+
+export async function publicFetch(path, options = {}) {
+  const headers = new Headers(options.headers || {});
+  headers.set("Cache-Control", "no-store");
+
+  if (options.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  return fetch(`${API_URL}${path}`, {
+    ...options,
+    headers,
+    credentials: "include",
+  });
 }

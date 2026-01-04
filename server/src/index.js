@@ -26,7 +26,7 @@ app.use(cors({ origin: allowedOrigins, credentials: true }));
 
 app.get("/", (req, res) => res.json({ ok: true, name: "Lumera API" }));
 
-app.use("/api", authRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api", userRoutes);
 app.use("/api/tenants", tenantRoutes);
 app.use("/api", inviteRoutes);

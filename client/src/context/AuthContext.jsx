@@ -18,14 +18,19 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   async function loadMe() {
-    const res = await apiFetch("/users/me");
-    if (!res.ok) {
+    try {
+      const res = await apiFetch("/users/me");
+      if (!res.ok) {
+        setUser(null);
+        return null;
+      }
+      const data = await res.json().catch(() => null);
+      setUser(data?.user || null);
+      return data?.user || null;
+    } catch {
       setUser(null);
       return null;
     }
-    const data = await res.json().catch(() => null);
-    setUser(data?.user || null);
-    return data?.user || null;
   }
 
   async function login(email, password) {

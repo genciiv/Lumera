@@ -1,8 +1,8 @@
 // server/src/routes/auth.routes.js
 import { Router } from "express";
 import {
-  login,
   register,
+  login,
   refresh,
   logout,
 } from "../controllers/auth.controller.js";
