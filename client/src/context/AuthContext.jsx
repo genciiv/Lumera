@@ -1,16 +1,10 @@
-// client/src/context/AuthContext.jsx
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import {
-  apiFetch,
-  setAccessToken,
-  getAccessToken,
-  clearAccessToken,
-} from "../lib/api.js";
+import { apiFetch, setAccessToken, clearAccessToken } from "../lib/api.js";
 
 const AuthContext = createContext(null);
 
-function safeJson(res) {
-  return res.json().catch(() => null);
+async function safeJson(res) {
+  return res.json().catch(() => ({}));
 }
 
 export function AuthProvider({ children }) {
@@ -18,19 +12,14 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   async function loadMe() {
-    try {
-      const res = await apiFetch("/users/me");
-      if (!res.ok) {
-        setUser(null);
-        return null;
-      }
-      const data = await res.json().catch(() => null);
-      setUser(data?.user || null);
-      return data?.user || null;
-    } catch {
+    const res = await apiFetch("/users/me");
+    if (!res.ok) {
       setUser(null);
       return null;
     }
+    const data = await safeJson(res);
+    setUser(data?.user || null);
+    return data?.user || null;
   }
 
   async function login(email, password) {
@@ -40,8 +29,7 @@ export function AuthProvider({ children }) {
     });
 
     const data = await safeJson(res);
-    if (!res.ok)
-      throw new Error(data?.message || data?.error || "Login failed");
+    if (!res.ok) throw new Error(data?.message || "Login failed");
 
     setAccessToken(data.accessToken);
     await loadMe();
@@ -54,8 +42,7 @@ export function AuthProvider({ children }) {
     });
 
     const data = await safeJson(res);
-    if (!res.ok)
-      throw new Error(data?.message || data?.error || "Register failed");
+    if (!res.ok) throw new Error(data?.message || "Register failed");
 
     setAccessToken(data.accessToken);
     await loadMe();
@@ -74,11 +61,10 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
+    // vetëm provon /users/me nëse refresh cookie ekziston
     (async () => {
       try {
-        if (getAccessToken()) {
-          await loadMe();
-        }
+        await loadMe();
       } finally {
         setLoading(false);
       }

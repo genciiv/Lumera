@@ -11,27 +11,27 @@ import {
 
 const router = Router();
 
-/* ============ PUBLIC BLOG (no auth) ============ */
-router.get("/blog/public", listPublicPosts);
-router.get("/blog/public/:slug", getPublicPostBySlug);
+// PUBLIC
+router.get("/public", listPublicPosts);
+router.get("/public/:slug", getPublicPostBySlug);
 
-/* ============ ADMIN BLOG (auth + role) ============ */
+// ADMIN
 router.get(
-  "/blog",
+  "/",
   requireAuth,
   requireRole(["TenantOwner", "Admin"]),
   listAdminPosts
 );
 
 router.post(
-  "/blog",
+  "/",
   requireAuth,
   requireRole(["TenantOwner", "Admin"]),
   createPost
 );
 
 router.delete(
-  "/blog/:id",
+  "/:id",
   requireAuth,
   requireRole(["TenantOwner", "Admin"]),
   deletePost

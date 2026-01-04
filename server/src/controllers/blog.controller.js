@@ -1,19 +1,13 @@
 import BlogPost from "../models/BlogPost.js";
 import Tenant from "../models/Tenant.js";
 
-/** helper: nxjerr tenant nga query ?tenant=slug  */
 async function tenantFromQuery(req) {
   const slug = (req.query.tenant || "").trim().toLowerCase();
   if (!slug) return null;
   return Tenant.findOne({ slug });
 }
 
-/* ===================== PUBLIC ===================== */
-
-/**
- * GET /api/blog/public?tenant=lumera
- * Kthen postet publike për tenant slug.
- */
+// PUBLIC: /api/blog/public?tenant=lumera
 export async function listPublicPosts(req, res) {
   const tenant = await tenantFromQuery(req);
   if (!tenant) return res.status(404).json({ message: "Tenant not found" });
@@ -28,10 +22,7 @@ export async function listPublicPosts(req, res) {
   res.json({ posts });
 }
 
-/**
- * GET /api/blog/public/:slug?tenant=lumera
- * Kthen 1 post publik.
- */
+// PUBLIC: /api/blog/public/:slug?tenant=lumera
 export async function getPublicPostBySlug(req, res) {
   const tenant = await tenantFromQuery(req);
   if (!tenant) return res.status(404).json({ message: "Tenant not found" });
@@ -45,30 +36,19 @@ export async function getPublicPostBySlug(req, res) {
   }).select("title slug content createdAt");
 
   if (!post) return res.status(404).json({ message: "Post not found" });
-
   res.json({ post });
 }
 
-/* ===================== ADMIN ===================== */
-
-/**
- * GET /api/blog
- * Lista admin për tenant-in e user-it.
- */
+// ADMIN: /api/blog
 export async function listAdminPosts(req, res) {
-  const posts = await BlogPost.find({
-    tenantId: req.user.tenantId,
-  })
+  const posts = await BlogPost.find({ tenantId: req.user.tenantId })
     .sort({ createdAt: -1 })
     .select("title slug published createdAt");
 
   res.json({ posts });
 }
 
-/**
- * POST /api/blog
- * Body: { title, slug, content }
- */
+// ADMIN: POST /api/blog
 export async function createPost(req, res) {
   const { title, slug, content = "" } = req.body || {};
 
@@ -88,9 +68,7 @@ export async function createPost(req, res) {
   res.status(201).json({ post: newPost });
 }
 
-/**
- * DELETE /api/blog/:id
- */
+// ADMIN: DELETE /api/blog/:id
 export async function deletePost(req, res) {
   const { id } = req.params;
 

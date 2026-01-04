@@ -1,33 +1,33 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { publicFetch } from "../../lib/api.js"; // nëse je te public
+import { publicFetch } from "../../lib/api.js";
+
+const TENANT_SLUG = "lumera"; // ndrysho nëse tenant-i yt ka slug tjetër
 
 export default function Blog() {
   const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true); // loading true by default
+  const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
   useEffect(() => {
     let alive = true;
 
-    // ✅ microtask: s’quhet "synchronously" nga ESLint rule
-    Promise.resolve().then(async () => {
-      if (!alive) return;
-
-      setErr("");
-
+    (async () => {
       try {
-        const res = await publicFetch("/blog/public"); // ✅ saktë me API helper
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data?.message || `Error ${res.status}`);
+        setLoading(true);
+        setErr("");
 
+        const res = await publicFetch(`/blog/public?tenant=${TENANT_SLUG}`);
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) throw new Error(data?.message || `Error ${res.status}`);
         if (alive) setPosts(data.posts || []);
       } catch (e) {
         if (alive) setErr(e?.message || "Failed to load blog");
       } finally {
         if (alive) setLoading(false);
       }
-    });
+    })();
 
     return () => {
       alive = false;
